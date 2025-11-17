@@ -65,5 +65,4 @@ ENV/
 *.tfstate.*
 .terraform.lock.hcl
 
-
-
+*/.env

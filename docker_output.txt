@@ -1,0 +1,160 @@
+#1 [internal] load local bake definitions
+#1 reading from stdin 2.07kB done
+#1 DONE 0.0s
+
+#2 [backend internal] load build definition from Dockerfile
+#2 transferring dockerfile: 203B done
+#2 DONE 0.0s
+
+#3 [frontend internal] load build definition from Dockerfile
+#3 transferring dockerfile: 180B done
+#3 DONE 0.0s
+
+#4 [worker internal] load build definition from Dockerfile.worker
+#4 transferring dockerfile: 208B done
+#4 DONE 0.0s
+
+#5 [ai-service internal] load build definition from Dockerfile
+#5 transferring dockerfile: 438B done
+#5 DONE 0.0s
+
+#6 [backend internal] load metadata for docker.io/library/node:18-alpine
+#6 DONE 0.1s
+
+#7 [frontend internal] load .dockerignore
+#7 transferring context: 2B done
+#7 DONE 0.0s
+
+#8 [ai-service internal] load metadata for docker.io/library/python:3.11-slim
+#8 DONE 0.1s
+
+#9 [worker internal] load .dockerignore
+#9 transferring context: 2B done
+#9 DONE 0.0s
+
+#10 [worker 1/6] FROM docker.io/library/node:18-alpine@sha256:8d6421d663b4c28fd3ebc498332f249011d118945588d0a35cb9bc4b8ca09d9e
+#10 DONE 0.0s
+
+#11 [ai-service internal] load .dockerignore
+#11 transferring context: 2B done
+#11 DONE 0.0s
+
+#12 [frontend internal] load build context
+#12 transferring context: 932B 0.0s done
+#12 DONE 0.0s
+
+#13 [ai-service 1/6] FROM docker.io/library/python:3.11-slim@sha256:e4676722fba839e2e5cdb844a52262b43e90e56dbd55b7ad953ee3615ad7534f
+#13 DONE 0.0s
+
+#14 [frontend 3/6] COPY package*.json ./
+#14 CACHED
+
+#15 [ai-service 2/6] WORKDIR /app
+#15 CACHED
+
+#16 [worker internal] load build context
+#16 transferring context: 1.75kB 0.0s done
+#16 DONE 0.0s
+
+#17 [ai-service internal] load build context
+#17 transferring context: 376B done
+#17 DONE 0.0s
+
+#18 [backend 2/6] WORKDIR /app
+#18 CACHED
+
+#19 [backend 3/6] COPY package*.json ./
+#19 CACHED
+
+#20 [backend 4/6] RUN npm ci --only=production
+#20 0.679 npm warn config only Use `--omit=dev` to omit dev dependencies from the install.
+#20 ...
+
+#21 [frontend 4/6] RUN npm ci
+#21 1.528 npm error code EUSAGE
+#21 1.528 npm error
+#21 1.528 npm error The `npm ci` command can only install with an existing package-lock.json or
+#21 1.528 npm error npm-shrinkwrap.json with lockfileVersion >= 1. Run an install with npm@5 or
+#21 1.528 npm error later to generate a package-lock.json file, then try again.
+#21 1.528 npm error
+#21 1.528 npm error Clean install a project
+#21 1.528 npm error
+#21 1.528 npm error Usage:
+#21 1.528 npm error npm ci
+#21 1.528 npm error
+#21 1.528 npm error Options:
+#21 1.528 npm error [--install-strategy <hoisted|nested|shallow|linked>] [--legacy-bundling]
+#21 1.528 npm error [--global-style] [--omit <dev|optional|peer> [--omit <dev|optional|peer> ...]]
+#21 1.528 npm error [--include <prod|dev|optional|peer> [--include <prod|dev|optional|peer> ...]]
+#21 1.528 npm error [--strict-peer-deps] [--foreground-scripts] [--ignore-scripts] [--no-audit]
+#21 1.528 npm error [--no-bin-links] [--no-fund] [--dry-run]
+#21 1.528 npm error [-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]
+#21 1.528 npm error [-ws|--workspaces] [--include-workspace-root] [--install-links]
+#21 1.528 npm error
+#21 1.528 npm error aliases: clean-install, ic, install-clean, isntall-clean
+#21 1.528 npm error
+#21 1.528 npm error Run "npm help ci" for more info
+#21 1.532 npm error A complete log of this run can be found in: /root/.npm/_logs/2025-11-17T20_48_32_434Z-debug-0.log
+#21 ERROR: process "/bin/sh -c npm ci" did not complete successfully: exit code: 1
+
+#20 [backend 4/6] RUN npm ci --only=production
+#20 1.584 npm error code EUSAGE
+#20 1.585 npm error
+#20 1.585 npm error The `npm ci` command can only install with an existing package-lock.json or
+#20 1.585 npm error npm-shrinkwrap.json with lockfileVersion >= 1. Run an install with npm@5 or
+#20 1.585 npm error later to generate a package-lock.json file, then try again.
+#20 1.585 npm error
+#20 1.585 npm error Clean install a project
+#20 1.585 npm error
+#20 1.585 npm error Usage:
+#20 1.585 npm error npm ci
+#20 1.585 npm error
+#20 1.585 npm error Options:
+#20 1.585 npm error [--install-strategy <hoisted|nested|shallow|linked>] [--legacy-bundling]
+#20 1.585 npm error [--global-style] [--omit <dev|optional|peer> [--omit <dev|optional|peer> ...]]
+#20 1.585 npm error [--include <prod|dev|optional|peer> [--include <prod|dev|optional|peer> ...]]
+#20 1.585 npm error [--strict-peer-deps] [--foreground-scripts] [--ignore-scripts] [--no-audit]
+#20 1.585 npm error [--no-bin-links] [--no-fund] [--dry-run]
+#20 1.585 npm error [-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]
+#20 1.585 npm error [-ws|--workspaces] [--include-workspace-root] [--install-links]
+#20 1.585 npm error
+#20 1.585 npm error aliases: clean-install, ic, install-clean, isntall-clean
+#20 1.585 npm error
+#20 1.585 npm error Run "npm help ci" for more info
+#20 1.590 npm error A complete log of this run can be found in: /root/.npm/_logs/2025-11-17T20_48_32_484Z-debug-0.log
+#20 ERROR: process "/bin/sh -c npm ci --only=production" did not complete successfully: exit code: 1
+
+#22 [ai-service 3/6] RUN apt-get update && apt-get install -y     tesseract-ocr     libtesseract-dev     libgl1-mesa-glx     libglib2.0-0     && rm -rf /var/lib/apt/lists/*
+#22 0.473 Get:1 http://deb.debian.org/debian trixie InRelease [140 kB]
+#22 0.534 Get:2 http://deb.debian.org/debian trixie-updates InRelease [47.3 kB]
+#22 0.550 Get:3 http://deb.debian.org/debian-security trixie-security InRelease [43.4 kB]
+#22 0.589 Get:4 http://deb.debian.org/debian trixie/main amd64 Packages [9670 kB]
+#22 1.017 Get:5 http://deb.debian.org/debian trixie-updates/main amd64 Packages [5412 B]
+#22 1.020 Get:6 http://deb.debian.org/debian-security trixie-security/main amd64 Packages [71.8 kB]
+#22 CANCELED
+------
+ > [frontend 4/6] RUN npm ci:
+1.528 npm error [--include <prod|dev|optional|peer> [--include <prod|dev|optional|peer> ...]]
+1.528 npm error [--strict-peer-deps] [--foreground-scripts] [--ignore-scripts] [--no-audit]
+1.528 npm error [--no-bin-links] [--no-fund] [--dry-run]
+1.528 npm error [-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]
+1.528 npm error [-ws|--workspaces] [--include-workspace-root] [--install-links]
+1.528 npm error
+1.528 npm error aliases: clean-install, ic, install-clean, isntall-clean
+1.528 npm error
+1.528 npm error Run "npm help ci" for more info
+1.532 npm error A complete log of this run can be found in: /root/.npm/_logs/2025-11-17T20_48_32_434Z-debug-0.log
+------
+------
+ > [worker 4/6] RUN npm ci --only=production:
+1.585 npm error [--include <prod|dev|optional|peer> [--include <prod|dev|optional|peer> ...]]
+1.585 npm error [--strict-peer-deps] [--foreground-scripts] [--ignore-scripts] [--no-audit]
+1.585 npm error [--no-bin-links] [--no-fund] [--dry-run]
+1.585 npm error [-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]
+1.585 npm error [-ws|--workspaces] [--include-workspace-root] [--install-links]
+1.585 npm error
+1.585 npm error aliases: clean-install, ic, install-clean, isntall-clean
+1.585 npm error
+1.585 npm error Run "npm help ci" for more info
+1.590 npm error A complete log of this run can be found in: /root/.npm/_logs/2025-11-17T20_48_32_484Z-debug-0.log
+------

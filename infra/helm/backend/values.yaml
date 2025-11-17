@@ -1,0 +1,50 @@
+replicaCount: 3
+
+image:
+  repository: scribe-ai/backend
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3001
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: api.scribe-ai.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: scribe-ai-api-tls
+      hosts:
+        - api.scribe-ai.com
+
+env:
+  NODE_ENV: production
+  DATABASE_URL: postgresql://scribe:${DB_PASSWORD}@scribe-db:5432/scribe_ai
+  REDIS_URL: redis://scribe-redis:6379
+  S3_ENDPOINT: https://s3.amazonaws.com
+  S3_BUCKET: scribe-ai-media
+  JWT_SECRET: ${JWT_SECRET}
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+
+
+

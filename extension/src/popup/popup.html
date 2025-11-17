@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scribe AI</title>
+  <style>
+    body {
+      width: 320px;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 20px;
+      color: #333;
+    }
+    .status {
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      text-align: center;
+      font-weight: 500;
+    }
+    .status.recording {
+      background: #fee;
+      color: #c33;
+    }
+    .status.idle {
+      background: #eef;
+      color: #33c;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    button:hover {
+      opacity: 0.8;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-start {
+      background: #4CAF50;
+      color: white;
+      margin-bottom: 8px;
+    }
+    .btn-stop {
+      background: #f44336;
+      color: white;
+    }
+    .info {
+      margin-top: 16px;
+      padding: 12px;
+      background: #f5f5f5;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📝 Scribe AI</h1>
+  </div>
+  
+  <div id="status" class="status idle">
+    Ready to record
+  </div>
+  
+  <button id="btnStart" class="btn-start">Start Recording</button>
+  <button id="btnStop" class="btn-stop" disabled>Stop Recording</button>
+  
+  <div class="info">
+    <strong>How it works:</strong><br>
+    1. Click "Start Recording"<br>
+    2. Interact with the page<br>
+    3. Click "Stop Recording"<br>
+    4. View your guide in the app
+  </div>
+
+  <script type="module" src="./popup.ts"></script>
+</body>
+</html>
+

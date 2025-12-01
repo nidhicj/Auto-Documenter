@@ -14,11 +14,18 @@ export default defineConfig({
       },
       output: {
         entryFileNames: '[name].js',
-        chunkFileNames: '[name].js',
+        chunkFileNames: '[name].js',  // Remove hash from chunk filenames
         assetFileNames: '[name].[ext]',
+        // Completely disable chunking
+        manualChunks: undefined,
       },
+      // Prevent optimizations that create shared chunks
+      preserveEntrySignatures: 'strict',
     },
     copyPublicDir: false,
+    minify: false,  // Disable minification to see the actual code structure
+    // Disable chunk size warnings
+    chunkSizeWarningLimit: 10000,
   },
   plugins: [
     {

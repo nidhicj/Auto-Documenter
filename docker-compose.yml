@@ -62,7 +62,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
       S3_BUCKET: ${S3_BUCKET}
-    entrypoint: ["/bin/sh", "/init-minio.sh"]
+    entrypoint: ["/bin/sh", "/minio-init.sh"]
 
   # NestJS Backend
   backend:

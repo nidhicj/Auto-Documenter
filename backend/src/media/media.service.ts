@@ -48,7 +48,7 @@ export class MediaService {
    * Get public URL for media
    */
   async getMediaUrl(key: string): Promise<string> {
-    return this.s3Service.getPublicUrl(key);
+    return await this.s3Service.getPublicUrl(key);
   }
 
   /**
@@ -61,6 +61,7 @@ export class MediaService {
     return organizationId ? `orgs/${organizationId}/${baseKey}` : baseKey;
   }
 }
+
 
 
 

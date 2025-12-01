@@ -19,7 +19,7 @@ resource "aws_vpc" "main" {
   enable_dns_support    = true
 
   tags = {
-    Name = "scribe-ai-vpc"
+    Name = "autodoc-ai-vpc"
   }
 }
 
@@ -28,7 +28,7 @@ resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
   tags = {
-    Name = "scribe-ai-igw"
+    Name = "autodoc-ai-igw"
   }
 }
 
@@ -42,7 +42,7 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = {
-    Name = "scribe-ai-public-${count.index + 1}"
+    Name = "autodoc-ai-public-${count.index + 1}"
   }
 }
 
@@ -53,7 +53,7 @@ resource "aws_subnet" "private" {
   availability_zone = data.aws_availability_zones.available.names[count.index]
 
   tags = {
-    Name = "scribe-ai-private-${count.index + 1}"
+    Name = "autodoc-ai-private-${count.index + 1}"
   }
 }
 
@@ -71,7 +71,7 @@ resource "aws_route_table" "public" {
   }
 
   tags = {
-    Name = "scribe-ai-public-rt"
+    Name = "autodoc-ai-public-rt"
   }
 }
 
@@ -83,22 +83,22 @@ resource "aws_route_table_association" "public" {
 
 # RDS PostgreSQL
 resource "aws_db_subnet_group" "main" {
-  name       = "scribe-ai-db-subnet"
+  name       = "autodoc-ai-db-subnet"
   subnet_ids = aws_subnet.private[*].id
 
   tags = {
-    Name = "scribe-ai-db-subnet"
+    Name = "autodoc-ai-db-subnet"
   }
 }
 
 resource "aws_db_instance" "main" {
-  identifier             = "scribe-ai-db"
+  identifier             = "autodoc-ai-db"
   engine                 = "postgres"
   engine_version         = "15.4"
   instance_class         = "db.t3.micro"
   allocated_storage      = 20
   storage_type           = "gp3"
-  db_name                = "scribe_ai"
+  db_name                = "autodoc_ai"
   username               = var.db_username
   password               = var.db_password
   vpc_security_group_ids = [aws_security_group.rds.id]
@@ -106,18 +106,18 @@ resource "aws_db_instance" "main" {
   skip_final_snapshot    = true
 
   tags = {
-    Name = "scribe-ai-db"
+    Name = "autodoc-ai-db"
   }
 }
 
 # ElastiCache Redis
 resource "aws_elasticache_subnet_group" "main" {
-  name       = "scribe-ai-redis-subnet"
+  name       = "autodoc-ai-redis-subnet"
   subnet_ids = aws_subnet.private[*].id
 }
 
 resource "aws_elasticache_cluster" "main" {
-  cluster_id           = "scribe-ai-redis"
+  cluster_id           = "autodoc-ai-redis"
   engine               = "redis"
   node_type            = "cache.t3.micro"
   num_cache_nodes      = 1
@@ -131,7 +131,7 @@ resource "aws_s3_bucket" "media" {
   bucket = var.s3_bucket_name
 
   tags = {
-    Name = "scribe-ai-media"
+    Name = "autodoc-ai-media"
   }
 }
 
@@ -144,7 +144,7 @@ resource "aws_s3_bucket_versioning" "media" {
 
 # Security Groups
 resource "aws_security_group" "rds" {
-  name        = "scribe-ai-rds-sg"
+  name        = "autodoc-ai-rds-sg"
   description = "Security group for RDS"
   vpc_id      = aws_vpc.main.id
 
@@ -164,7 +164,7 @@ resource "aws_security_group" "rds" {
 }
 
 resource "aws_security_group" "redis" {
-  name        = "scribe-ai-redis-sg"
+  name        = "autodoc-ai-redis-sg"
   description = "Security group for Redis"
   vpc_id      = aws_vpc.main.id
 
@@ -191,7 +191,7 @@ variable "aws_region" {
 
 variable "db_username" {
   description = "Database username"
-  default     = "scribe"
+  default     = "autodoc"
 }
 
 variable "db_password" {
@@ -201,7 +201,7 @@ variable "db_password" {
 
 variable "s3_bucket_name" {
   description = "S3 bucket name for media"
-  default     = "scribe-ai-media"
+  default     = "autodoc-ai-media"
 }
 
 # Outputs
@@ -220,6 +220,7 @@ output "redis_endpoint" {
 output "s3_bucket" {
   value = aws_s3_bucket.media.id
 }
+
 
 
 

@@ -1,16 +1,35 @@
 import { DOMEvent } from './types';
+import { logInfo, logError } from './logger';
 
 let isRecording = false;
 
-// Listen for recording start/stop
-window.addEventListener('scribe-start-recording', () => {
+// Listen for recording start/stop via custom events
+window.addEventListener('autodoc-start-recording', () => {
+  logInfo('Content', 'Received start recording event');
   isRecording = true;
   startEventCapture();
 });
 
-window.addEventListener('scribe-stop-recording', () => {
+window.addEventListener('autodoc-stop-recording', () => {
+  logInfo('Content', 'Received stop recording event');
   isRecording = false;
   stopEventCapture();
+});
+
+// Also listen for messages from background script
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'START_RECORDING') {
+    logInfo('Content', 'Received start recording message');
+    isRecording = true;
+    startEventCapture();
+    sendResponse({ success: true });
+  } else if (message.type === 'STOP_RECORDING') {
+    logInfo('Content', 'Received stop recording message');
+    isRecording = false;
+    stopEventCapture();
+    sendResponse({ success: true });
+  }
+  return true; // Keep channel open for async response
 });
 
 /**
@@ -42,7 +61,7 @@ function startEventCapture(): void {
   }, 1000);
 
   // Store observer for cleanup
-  (window as any).__scribeObserver = observer;
+  (window as any).__autodocObserver = observer;
 }
 
 /**
@@ -52,10 +71,10 @@ function stopEventCapture(): void {
   document.removeEventListener('click', handleClick, true);
   document.removeEventListener('input', handleInput, true);
   
-  const observer = (window as any).__scribeObserver;
+  const observer = (window as any).__autodocObserver;
   if (observer) {
     observer.disconnect();
-    delete (window as any).__scribeObserver;
+    delete (window as any).__autodocObserver;
   }
 }
 
@@ -188,9 +207,10 @@ function sendEventToBackground(event: DOMEvent): void {
     type: 'DOM_EVENT',
     event,
   }).catch((error) => {
-    console.error('[Content] Failed to send event:', error);
+    logError('Content', 'Failed to send event to background', error);
   });
 }
+
 
 
 

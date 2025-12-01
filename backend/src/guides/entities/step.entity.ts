@@ -39,7 +39,7 @@ export class Step {
     detectedPII: Array<{ type: string; value: string; confidence: number }>;
   };
 
-  @Column()
+  @Column({ type: 'bigint' })
   timestamp: number;
 
   @CreateDateColumn()
@@ -48,6 +48,7 @@ export class Step {
   @UpdateDateColumn()
   updatedAt: Date;
 }
+
 
 
 

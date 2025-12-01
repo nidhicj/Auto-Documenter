@@ -1,5 +1,6 @@
 import { ScreenshotData, UploadResponse } from './types';
 import { PendingScreenshot } from './offlineQueue';
+import { logError } from './logger';
 
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3001';
 
@@ -27,7 +28,7 @@ async function getSignedUrl(key: string): Promise<string> {
     const data = await response.json();
     return data.signedUrl;
   } catch (error) {
-    console.error('[Uploader] Failed to get signed URL:', error);
+    logError('Uploader', 'Failed to get signed URL', error);
     throw error;
   }
 }
@@ -69,7 +70,7 @@ export async function uploadScreenshot(
       key,
     };
   } catch (error) {
-    console.error('[Uploader] Upload failed:', error);
+    logError('Uploader', 'Upload failed', error);
     throw error;
   }
 }
@@ -92,7 +93,7 @@ async function notifyUploadComplete(key: string, screenshot: ScreenshotData): Pr
       }),
     });
   } catch (error) {
-    console.error('[Uploader] Failed to notify upload complete:', error);
+    logError('Uploader', 'Failed to notify upload completion', error);
     // Non-critical, don't throw
   }
 }
@@ -110,6 +111,7 @@ export async function uploadScreenshots(
 
   return Promise.all(uploadPromises);
 }
+
 
 
 

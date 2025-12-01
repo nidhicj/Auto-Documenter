@@ -33,15 +33,32 @@ export default function GuideEditorPage() {
   const fetchGuide = async () => {
     try {
       const token = localStorage.getItem('token')
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
       const response = await fetch(`http://localhost:3001/api/guides/${params.id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
       })
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch guide: ${response.statusText}`)
+      }
+
       const data = await response.json()
-      setGuide(data)
+      console.log('Fetched guide:', data)
+      
+      // Ensure steps is always an array
+      setGuide({
+        ...data,
+        steps: data.steps || [],
+      })
     } catch (error) {
       console.error('Failed to fetch guide:', error)
+      setGuide(null)
     } finally {
       setLoading(false)
     }
@@ -131,19 +148,26 @@ export default function GuideEditorPage() {
       </div>
 
       <div className="space-y-6">
-        {guide.steps
-          .sort((a, b) => a.stepIndex - b.stepIndex)
-          .map((step) => (
-            <StepEditor
-              key={step.id}
-              step={step}
-              onUpdate={(updates) => handleStepUpdate(step.id, updates)}
-            />
-          ))}
+        {guide.steps && guide.steps.length > 0 ? (
+          guide.steps
+            .sort((a, b) => a.stepIndex - b.stepIndex)
+            .map((step) => (
+              <StepEditor
+                key={step.id}
+                step={step}
+                onUpdate={(updates) => handleStepUpdate(step.id, updates)}
+              />
+            ))
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            No steps yet. Steps will appear here after the workflow is processed.
+          </div>
+        )}
       </div>
     </div>
   )
 }
+
 
 
 

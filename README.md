@@ -1,4 +1,4 @@
-# Scribe AI
+# AutoDoc AI
 
 A production-grade platform that captures user workflows (screenshots + DOM actions), turns them into editable step-by-step guides, and generates AI-powered documentation.
 
@@ -92,7 +92,7 @@ docker compose up -d
 ## Project Structure
 
 ```
-scribe-ai/
+autodoc-ai/
 ├── extension/          # Chrome MV3 extension
 │   ├── src/
 │   │   ├── record.ts          # Event listener

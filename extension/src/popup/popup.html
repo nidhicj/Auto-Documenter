@@ -69,6 +69,44 @@
       font-size: 12px;
       color: #666;
     }
+    .log-controls {
+      margin-top: 14px;
+      display: flex;
+      gap: 10px;
+    }
+    .btn-logs {
+      background: #2563eb;
+      color: white;
+      border-radius: 8px;
+      border: none;
+      padding: 12px;
+      flex: 1;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .btn-clear-logs {
+      background: #6b7280;
+      color: white;
+      border-radius: 8px;
+      border: none;
+      padding: 12px;
+      flex: 1;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    pre.log-output {
+      margin-top: 12px;
+      background: #020617;
+      color: #e2e8f0;
+      font-size: 11px;
+      line-height: 1.4;
+      border-radius: 8px;
+      padding: 10px;
+      max-height: 140px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -83,6 +121,8 @@
   <button id="btnStart" class="btn-start">Start Recording</button>
   <button id="btnStop" class="btn-stop" disabled>Stop Recording</button>
   
+  <div id="error" style="display: none; margin-top: 12px; padding: 8px; background: #fee; color: #c33; border-radius: 4px; font-size: 12px;"></div>
+  
   <div class="info">
     <strong>How it works:</strong><br>
     1. Click "Start Recording"<br>
@@ -90,8 +130,13 @@
     3. Click "Stop Recording"<br>
     4. View your guide in the app
   </div>
+  <div class="log-controls">
+    <button id="btnRefreshLogs" class="btn-logs">Refresh Logs</button>
+    <button id="btnClearLogs" class="btn-clear-logs">Clear Logs</button>
+  </div>
+  <pre id="logOutput" class="log-output"></pre>
 
-  <script type="module" src="./popup.ts"></script>
+  <script type="module" src="./popup.js"></script>
 </body>
 </html>
 

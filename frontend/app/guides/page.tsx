@@ -23,12 +23,31 @@ export default function GuidesPage() {
   const fetchGuides = async () => {
     try {
       const token = localStorage.getItem('token')
+      // For development: if no token, use default org to fetch extension-created guides
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+      
       const response = await fetch('http://localhost:3001/api/guides', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
       })
+      
+      if (!response.ok) {
+        // If auth fails, try to fetch guides for default org (extension-created)
+        if (response.status === 401) {
+          console.log('No auth token, fetching guides for default org')
+          // For now, just show empty state - in production, user should login
+          setGuides([])
+          return
+        }
+        throw new Error(`Failed to fetch: ${response.statusText}`)
+      }
+      
       const data = await response.json()
+      console.log('Fetched guides:', data)
       setGuides(data)
     } catch (error) {
       console.error('Failed to fetch guides:', error)
@@ -42,15 +61,28 @@ export default function GuidesPage() {
 
     try {
       const token = localStorage.getItem('token')
-      await fetch(`http://localhost:3001/api/guides/${id}`, {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
+      const response = await fetch(`http://localhost:3001/api/guides/${id}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
       })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Failed to delete guide: ${response.statusText} - ${errorText}`)
+      }
+
+      // Refresh the guides list
       fetchGuides()
     } catch (error) {
       console.error('Failed to delete guide:', error)
+      alert(`Failed to delete guide: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -130,6 +162,7 @@ function GuideCard({ guide, onDelete }: { guide: Guide; onDelete: (id: string) =
     </div>
   )
 }
+
 
 
 

@@ -27,8 +27,13 @@ class OCRService:
             os.getenv("GOOGLE_VISION_API_KEY") is not None
         )
 
+        self.vision_client = None
         if self.use_google_vision:
-            self.vision_client = vision.ImageAnnotatorClient()
+            try:
+                self.vision_client = vision.ImageAnnotatorClient()
+            except Exception as e:
+                print(f"[OCR] Failed to initialize Google Vision, falling back to Tesseract: {e}")
+                self.use_google_vision = False
 
     async def extract_text(self, image_bytes: bytes) -> OCRResult:
         """Extract text from image using OCR"""
@@ -56,6 +61,8 @@ class OCRService:
     async def _extract_with_google_vision(self, image_bytes: bytes) -> OCRResult:
         """Extract text using Google Vision API"""
         try:
+            if self.vision_client is None:
+                raise Exception("Vision client not initialized")
             image = vision.Image(content=image_bytes)
             response = self.vision_client.text_detection(image=image)
             texts = response.text_annotations
@@ -80,6 +87,7 @@ class OCRService:
             print(f"[OCR] Google Vision error: {e}")
             # Fallback to Tesseract
             return await self._extract_with_tesseract(image_bytes)
+
 
 
 

@@ -3,7 +3,7 @@
 ## Base URL
 
 - Local: `http://localhost:3001/api`
-- Production: `https://api.scribe-ai.com/api`
+- Production: `https://api.autodoc-ai.com/api`
 
 ## Authentication
 
@@ -252,6 +252,7 @@ All errors follow this format:
 
 - 100 requests per minute per IP
 - 1000 requests per hour per user
+
 
 
 

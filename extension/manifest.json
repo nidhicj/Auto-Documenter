@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Scribe AI",
+  "name": "AutoDoc AI",
   "version": "1.0.0",
   "description": "Capture workflows with screenshots and DOM actions",
   "permissions": [
@@ -9,6 +9,9 @@
     "tabs",
     "scripting",
     "webNavigation"
+  ],
+  "optional_permissions": [
+    "tabCapture"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -29,7 +32,8 @@
     {
       "matches": ["<all_urls>"],
       "js": ["content.js"],
-      "run_at": "document_idle"
+      "run_at": "document_idle",
+      "type": "module"
     }
   ],
   "icons": {
@@ -44,6 +48,7 @@
     }
   ]
 }
+
 
 
 

@@ -1,5 +1,6 @@
 import { ScreenshotData } from './types';
 import { uploadScreenshot } from './uploader';
+import { logInfo, logWarn, logError } from './logger';
 
 export interface PendingScreenshot {
   stepIndex: number;
@@ -24,7 +25,7 @@ export async function processOfflineQueue(): Promise<void> {
       return;
     }
 
-    console.log(`[OfflineQueue] Processing ${pendingUploads.length} pending uploads`);
+    logInfo('OfflineQueue', 'Processing pending uploads', { count: pendingUploads.length });
 
     const successful: string[] = [];
     const failed: PendingScreenshot[] = [];
@@ -42,13 +43,13 @@ export async function processOfflineQueue(): Promise<void> {
         );
         successful.push(pending.key);
       } catch (error) {
-        console.error(`[OfflineQueue] Upload failed for ${pending.key}:`, error);
+        logError('OfflineQueue', `Upload failed for ${pending.key}`, error);
         
         if (pending.retryCount < MAX_RETRIES) {
           pending.retryCount++;
           failed.push(pending);
         } else {
-          console.error(`[OfflineQueue] Max retries reached for ${pending.key}`);
+          logWarn('OfflineQueue', `Max retries reached for ${pending.key}`);
         }
       }
     }
@@ -57,11 +58,16 @@ export async function processOfflineQueue(): Promise<void> {
     const updatedPending = failed;
     await chrome.storage.local.set({ pendingUploads: updatedPending });
 
-    console.log(`[OfflineQueue] Completed: ${successful.length} successful, ${failed.length} failed`);
+    logInfo('OfflineQueue', 'Offline queue processing complete', {
+      successful: successful.length,
+      failed: failed.length,
+    });
   } catch (error) {
-    console.error('[OfflineQueue] Process failed:', error);
+    logError('OfflineQueue', 'Process failed', error);
   }
 }
+
+const MAX_PENDING_UPLOADS = 30; // Limit pending uploads to prevent quota exceeded
 
 /**
  * Add screenshot to offline queue
@@ -79,11 +85,44 @@ export async function addToOfflineQueue(screenshot: ScreenshotData, key: string)
       key,
     };
 
-    pendingUploads.push(pending);
-    await chrome.storage.local.set({ pendingUploads });
-    console.log(`[OfflineQueue] Added to queue: ${key}`);
-  } catch (error) {
-    console.error('[OfflineQueue] Failed to add to queue:', error);
+    // Limit the number of pending uploads to prevent quota exceeded
+    const updatedUploads = [...pendingUploads, pending];
+    if (updatedUploads.length > MAX_PENDING_UPLOADS) {
+      // Remove oldest uploads, keep only the most recent ones
+      const removed = updatedUploads.length - MAX_PENDING_UPLOADS;
+      updatedUploads.splice(0, removed);
+      logInfo('OfflineQueue', 'Removed old uploads to prevent quota exceeded', { removed });
+    }
+
+    await chrome.storage.local.set({ pendingUploads: updatedUploads });
+    logInfo('OfflineQueue', 'Added screenshot to offline queue', {
+      key,
+      total: updatedUploads.length,
+    });
+  } catch (error: any) {
+    // If quota exceeded, try to clean up
+    if (error.message && error.message.includes('quota')) {
+      logWarn('OfflineQueue', 'Quota exceeded, cleaning up old uploads');
+      try {
+        const { pendingUploads = [] } = await chrome.storage.local.get('pendingUploads');
+        // Keep only the 10 most recent uploads
+        const recentUploads = pendingUploads.slice(-10);
+        recentUploads.push({
+          stepIndex: screenshot.stepIndex,
+          screenshotBase64: screenshot.screenshotBase64,
+          domEvent: screenshot.domEvent,
+          timestamp: screenshot.timestamp,
+          retryCount: 0,
+          key,
+        });
+        await chrome.storage.local.set({ pendingUploads: recentUploads.slice(-10) });
+        logInfo('OfflineQueue', 'Cleaned up old uploads and added current screenshot');
+      } catch (cleanupError) {
+      logError('OfflineQueue', 'Failed to clean up and add pending upload', cleanupError);
+      }
+    } else {
+      logError('OfflineQueue', 'Failed to add screenshot to queue', error);
+    }
   }
 }
 
@@ -99,10 +138,11 @@ export async function checkConnectionAndProcessQueue(): Promise<void> {
 // Listen for online event
 if (typeof window !== 'undefined') {
   window.addEventListener('online', () => {
-    console.log('[OfflineQueue] Connection restored, processing queue');
+    logInfo('OfflineQueue', 'Connection restored, processing queue');
     processOfflineQueue();
   });
 }
+
 
 
 

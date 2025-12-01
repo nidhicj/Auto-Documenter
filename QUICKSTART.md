@@ -8,6 +8,13 @@
 - Chrome/Chromium browser
 - Google Gemini API key (for AI features) - Get one at https://makersuite.google.com/app/apikey
 
+
+Required variables:
+- `DATABASE_URL` (default: postgresql://autodoc:autodoc_dev_password@localhost:5432/autodoc_ai)
+- `REDIS_URL` (default: redis://localhost:6379)
+- `JWT_SECRET` (generate a secure secret)
+- `GOOGLE_GEMINI_API_KEY` (your Google Gemini API key - get one at https://makersuite.google.com/app/apikey)
+
 ## Step 1: Install Dependencies
 
 ```bash
@@ -34,13 +41,6 @@ cd ai-service && pip install -r requirements.txt && cd ..
 cd backend
 cp .env.example .env
 # Edit .env with your settings
-```
-
-Required variables:
-- `DATABASE_URL` (default: postgresql://scribe:scribe_dev_password@localhost:5432/scribe_ai)
-- `REDIS_URL` (default: redis://localhost:6379)
-- `JWT_SECRET` (generate a secure secret)
-- `GOOGLE_GEMINI_API_KEY` (your Google Gemini API key - get one at https://makersuite.google.com/app/apikey)
 
 ### Frontend
 ```bash
@@ -113,7 +113,7 @@ Then in Chrome:
 
 1. Open http://localhost:9001
 2. Login with `minioadmin` / `minioadmin123`
-3. Create bucket: `scribe-media`
+3. Create bucket: `autodoc-bucket`
 4. Set bucket policy to public read (for development)
 
 ## Step 6: Test the System

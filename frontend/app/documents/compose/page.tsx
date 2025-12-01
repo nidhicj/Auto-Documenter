@@ -8,7 +8,7 @@ export default function DocumentComposerPage() {
   const router = useRouter()
   const [guideId, setGuideId] = useState('')
   const [style, setStyle] = useState('professional')
-  const [document, setDocument] = useState('')
+  const [documentText, setDocumentText] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleCompose = async () => {
@@ -45,7 +45,7 @@ export default function DocumentComposerPage() {
         }),
       })
       const data = await response.json()
-      setDocument(data.document)
+      setDocumentText(data.document)
     } catch (error) {
       console.error('Failed to compose document:', error)
       alert('Failed to compose document')
@@ -96,13 +96,13 @@ export default function DocumentComposerPage() {
         </div>
       </div>
 
-      {document && (
+      {documentText && (
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Generated Document</h2>
             <button
               onClick={() => {
-                const blob = new Blob([document], { type: 'text/markdown' })
+                const blob = new Blob([documentText], { type: 'text/markdown' })
                 const url = URL.createObjectURL(blob)
                 const a = document.createElement('a')
                 a.href = url
@@ -116,13 +116,14 @@ export default function DocumentComposerPage() {
             </button>
           </div>
           <div className="prose max-w-none">
-            <pre className="whitespace-pre-wrap text-sm">{document}</pre>
+            <pre className="whitespace-pre-wrap text-sm">{documentText}</pre>
           </div>
         </div>
       )}
     </div>
   )
 }
+
 
 
 

@@ -1,7 +1,7 @@
 replicaCount: 3
 
 image:
-  repository: scribe-ai/backend
+  repository: autodoc-ai/backend
   tag: latest
   pullPolicy: IfNotPresent
 
@@ -15,21 +15,21 @@ ingress:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
   hosts:
-    - host: api.scribe-ai.com
+    - host: api.autodoc-ai.com
       paths:
         - path: /
           pathType: Prefix
   tls:
-    - secretName: scribe-ai-api-tls
+    - secretName: autodoc-ai-api-tls
       hosts:
-        - api.scribe-ai.com
+        - api.autodoc-ai.com
 
 env:
   NODE_ENV: production
-  DATABASE_URL: postgresql://scribe:${DB_PASSWORD}@scribe-db:5432/scribe_ai
-  REDIS_URL: redis://scribe-redis:6379
+  DATABASE_URL: postgresql://autodoc:${DB_PASSWORD}@autodoc-db:5432/autodoc_ai
+  REDIS_URL: redis://autodoc-redis:6379
   S3_ENDPOINT: https://s3.amazonaws.com
-  S3_BUCKET: scribe-ai-media
+  S3_BUCKET: autodoc-ai-media
   JWT_SECRET: ${JWT_SECRET}
 
 resources:
@@ -45,6 +45,7 @@ autoscaling:
   minReplicas: 3
   maxReplicas: 10
   targetCPUUtilizationPercentage: 80
+
 
 
 

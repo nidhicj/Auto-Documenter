@@ -1,8 +1,8 @@
-# Scribe AI Architecture
+# AutoDoc AI Architecture
 
 ## System Overview
 
-Scribe AI is a production-grade platform for capturing user workflows, generating step-by-step guides, and creating AI-powered documentation.
+AutoDoc AI is a production-grade platform for capturing user workflows, generating step-by-step guides, and creating AI-powered documentation.
 
 ## Component Architecture
 

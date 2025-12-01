@@ -37,5 +37,9 @@ import { RedactionModule } from './redaction/redaction.module';
     RedactionModule,
   ],
 })
-export class AppModule {}
-
+export class AppModule {
+  constructor() {
+    console.log('From app.module.ts file-  DATABASE_URL: ', process.env.DATABASE_URL);
+    console.log('From app.module.ts file-  NODE_ENV: ', process.env.NODE_ENV);
+  }
+}

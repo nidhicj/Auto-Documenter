@@ -1,20 +1,18 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
     image: postgres:17
-    container_name: scribe-postgres
+    container_name: autodoc-postgres
     environment:
-      POSTGRES_USER: scribe
-      POSTGRES_PASSWORD: scribe_dev_password
-      POSTGRES_DB: scribe_ai
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U scribe"]
+      test: ["CMD-SHELL", "pg_isready"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -22,7 +20,7 @@ services:
   # Redis Cache
   redis:
     image: redis:7
-    container_name: scribe-redis
+    container_name: autodoc-redis
     ports:
       - "6379:6379"
     volumes:
@@ -36,11 +34,11 @@ services:
   # MinIO (S3-compatible for local dev)
   minio:
     image: minio/minio:latest
-    container_name: scribe-minio
+    container_name: autodoc-minio
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin123
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -52,24 +50,40 @@ services:
       timeout: 20s
       retries: 3
 
+  minio-init:
+    image: minio/mc:latest
+    container_name: autodoc-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./init-minio.sh:/init-minio.sh
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      S3_BUCKET: ${S3_BUCKET}
+    entrypoint: ["/bin/sh", "/init-minio.sh"]
+
   # NestJS Backend
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: scribe-backend
+    container_name: autodoc-backend
     environment:
       NODE_ENV: development
-      DATABASE_URL: postgresql://scribe:scribe_dev_password@postgres:5432/scribe_ai
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379
-      S3_ENDPOINT: http://minio:9000
-      S3_ACCESS_KEY: minioadmin
-      S3_SECRET_KEY: minioadmin123
-      S3_BUCKET: scribe-media
-      S3_REGION: us-east-1
-      JWT_SECRET: dev_jwt_secret_change_in_production
-      JWT_EXPIRES_IN: 7d
-      GOOGLE_GEMINI_API_KEY: ${GOOGLE_GEMINI_API_KEY:-}
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_REGION: ${S3_REGION}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      GOOGLE_GEMINI_API_KEY: ${GOOGLE_GEMINI_API_KEY}
+      AI_SERVICE_URL: ${AI_SERVICE_URL:-http://ai-service:8000}
     ports:
       - "3001:3001"
     volumes:
@@ -82,22 +96,24 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-    command: npm run start:dev
+    command: sh -c "npm install && npm run start:dev"
 
   # FastAPI AI Service
   ai-service:
     build:
       context: ./ai-service
       dockerfile: Dockerfile
-    container_name: scribe-ai-service
+    container_name: autodoc-ai-service
     environment:
-      GOOGLE_GEMINI_API_KEY: ${GOOGLE_GEMINI_API_KEY:-}
+      GOOGLE_GEMINI_API_KEY: ${GOOGLE_GEMINI_API_KEY}
+      # GOOGLE_VISION_API_KEY is optional - only needed for redaction feature
+      # If not set, OCR will use Tesseract (free, open-source)
       GOOGLE_VISION_API_KEY: ${GOOGLE_VISION_API_KEY:-}
-      S3_ENDPOINT: http://minio:9000
-      S3_ACCESS_KEY: minioadmin
-      S3_SECRET_KEY: minioadmin123
-      S3_BUCKET: scribe-media
-      BACKEND_URL: http://backend:3001
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET}
+      BACKEND_URL: ${BACKEND_URL}
     ports:
       - "8000:8000"
     volumes:
@@ -111,17 +127,17 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.worker
-    container_name: scribe-worker
+    container_name: autodoc-worker
     environment:
       NODE_ENV: development
-      DATABASE_URL: postgresql://scribe:scribe_dev_password@postgres:5432/scribe_ai
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379
-      S3_ENDPOINT: http://minio:9000
-      S3_ACCESS_KEY: minioadmin
-      S3_SECRET_KEY: minioadmin123
-      S3_BUCKET: scribe-media
-      GOOGLE_GEMINI_API_KEY: ${GOOGLE_GEMINI_API_KEY:-}
-      AI_SERVICE_URL: http://ai-service:8000
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET}
+      GOOGLE_GEMINI_API_KEY: ${GOOGLE_GEMINI_API_KEY}
+      AI_SERVICE_URL: ${AI_SERVICE_URL}
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -136,10 +152,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: scribe-frontend
+    container_name: autodoc-frontend
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:3001
-      NEXT_PUBLIC_AI_SERVICE_URL: http://localhost:8000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      NEXT_PUBLIC_AI_SERVICE_URL: ${NEXT_PUBLIC_AI_SERVICE_URL}
+      NEXT_PUBLIC_S3_BUCKET: ${S3_BUCKET}
     ports:
       - "3000:3000"
     volumes:

@@ -11,7 +11,7 @@ export class RedactionService {
    * Calls AI service for OCR and PII detection
    */
   async processRedaction(stepId: string, screenshotUri: string): Promise<any> {
-    const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+    const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://ai-service:8000';
 
     try {
       const response = await firstValueFrom(
@@ -32,7 +32,7 @@ export class RedactionService {
    * Apply redaction blur to screenshot
    */
   async applyRedaction(screenshotUri: string, blurredRegions: any[]): Promise<string> {
-    const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+    const aiServiceUrl = process.env.AI_SERVICE_URL || 'http://ai-service:8000';
 
     try {
       const response = await firstValueFrom(
@@ -49,6 +49,7 @@ export class RedactionService {
     }
   }
 }
+
 
 
 

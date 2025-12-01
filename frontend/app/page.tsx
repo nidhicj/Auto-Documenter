@@ -9,7 +9,7 @@ export default function Home() {
       <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-16">
           <h1 className="text-6xl font-bold text-gray-900 mb-4">
-            Scribe AI
+            AutoDoc AI
           </h1>
           <p className="text-xl text-gray-600 mb-8">
             Capture workflows, create guides, generate documentation
@@ -58,6 +58,7 @@ function FeatureCard({ icon, title, description }: any) {
     </div>
   )
 }
+
 
 
 

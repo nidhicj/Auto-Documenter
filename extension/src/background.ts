@@ -1,8 +1,9 @@
-import { recordEvent, startRecording, stopRecording, getRecordingStatus } from './record';
+import { recordEvent, startRecording, stopRecording, getRecordingStatus, restoreRecordingStateFromStorage } from './record';
 import { checkConnectionAndProcessQueue } from './offlineQueue';
 import { DOMEvent } from './types';
 import {
   logInfo,
+  logWarn,
   logError,
   logBrowserMetadata,
   getBrowserLogs,
@@ -11,7 +12,7 @@ import {
 
 // Listen for messages from content script and popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  logInfo('Background', 'Received runtime message', { type: message.type, from: sender?.id });
+  logInfo('Background', 'Received runtime message', { type: message.type, from: sender?.id }, true);
 
   if (message.type === 'DOM_EVENT') {
     const event = message.event as DOMEvent;
@@ -19,7 +20,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     sendResponse({ success: true });
   } else if (message.type === 'START_RECORDING') {
     startRecording()
-      .then(() => sendResponse({ success: true }))
+      .then(() => {
+        logInfo('Background', 'Recording state changed to active', { tabId: sender.tab?.id }, true);
+        sendResponse({ success: true });
+      })
       .catch((error: unknown) => {
         const message = error instanceof Error ? error.message : 'Unknown error';
         logError('Background', 'Failed to start recording', error as Error);
@@ -28,7 +32,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true; // Async response
   } else if (message.type === 'STOP_RECORDING') {
     stopRecording()
-      .then(() => sendResponse({ success: true }))
+      .then(() => {
+        logInfo('Background', 'Recording stopped by popup', { tabId: sender.tab?.id }, true);
+        sendResponse({ success: true });
+      })
       .catch((error: unknown) => {
         const message = error instanceof Error ? error.message : 'Unknown error';
         logError('Background', 'Failed to stop recording', error as Error);
@@ -63,9 +70,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+// Restore any in-flight recording when the service worker wakes up
+void restoreRecordingStateFromStorage()
+  .then(() => logInfo('Background', 'Recording state restored on init'))
+  .catch((error) => logWarn('Background', 'Failed to restore recording state', error));
+
 // Process offline queue on startup
 chrome.runtime.onStartup.addListener(() => {
   logInfo('Background', 'Runtime startup - processing offline queue');
+  void restoreRecordingStateFromStorage();
   checkConnectionAndProcessQueue();
 });
 

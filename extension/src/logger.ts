@@ -36,11 +36,16 @@ async function persistEntry(entry: BrowserLogEntry): Promise<void> {
   }
 }
 
-export function logInfo(source: string, message: string, meta?: any): void {
+export function logInfo(source: string, message: string, meta?: any, persist: boolean = false): void {
   if (meta !== undefined) {
     console.log(`[${source}] ${message}`, meta);
   } else {
     console.log(`[${source}] ${message}`);
+  }
+
+  if (persist) {
+    const entry = createEntry('info', source, message, meta);
+    void persistEntry(entry);
   }
 }
 

@@ -1,8 +1,9 @@
 import { ScreenshotData, UploadResponse } from './types';
 import { PendingScreenshot } from './offlineQueue';
 import { logError } from './logger';
+import { getApiBaseUrl } from './config';
 
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3001';
+const API_BASE_URL = getApiBaseUrl();
 
 /**
  * Get signed URL for screenshot upload

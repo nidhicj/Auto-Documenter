@@ -1,9 +1,38 @@
 import { captureScreenshot, queueScreenshot } from './screenshot';
 import { v4 as uuidv4 } from 'uuid';
 import { logInfo, logWarn, logError } from './logger';
+import { getApiBaseUrl } from './config';
 let isRecording = false;
 let currentWorkflow = null;
 let stepIndex = 0;
+const API_BASE_URL = getApiBaseUrl();
+/**
+ * Rehydrate recording state after the background service worker reloads.
+ * This keeps DOM events flowing even if Chrome unloads the worker mid-session.
+ */
+export async function restoreRecordingStateFromStorage() {
+    try {
+        const { currentWorkflow: storedWorkflow, isRecording: storedIsRecording } = await chrome.storage.local.get([
+            'currentWorkflow',
+            'isRecording',
+        ]);
+        if (storedWorkflow && storedIsRecording) {
+            currentWorkflow = {
+                ...storedWorkflow,
+                screenshots: [], // screenshots are stored separately to save quota
+            };
+            isRecording = true;
+            stepIndex = storedWorkflow.events?.length ?? 0;
+            logInfo('Record', 'Restored recording state from storage', {
+                workflowId: currentWorkflow.id,
+                stepIndex,
+            });
+        }
+    }
+    catch (error) {
+        logWarn('Record', 'Failed to restore recording state', error);
+    }
+}
 /**
  * Start recording workflow
  */
@@ -34,7 +63,7 @@ export async function startRecording() {
     if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://') || tab.url.startsWith('edge://')) {
         throw new Error('Cannot record on chrome:// or extension pages. Please navigate to a regular webpage.');
     }
-    logInfo('Record', 'Starting recording on tab', { tabId: tab.id, url: tab.url });
+    logInfo('Record', 'Starting recording on tab', { tabId: tab.id, url: tab.url }, true);
     isRecording = true;
     stepIndex = 0;
     currentWorkflow = {
@@ -124,7 +153,7 @@ export async function startRecording() {
     }
     currentWorkflow.events.push(initialEvent);
     stepIndex++;
-    logInfo('Record', 'Recording started', { workflowId: currentWorkflow.id });
+    logInfo('Record', 'Recording started', { workflowId: currentWorkflow.id }, true);
 }
 /**
  * Stop recording and send workflow to backend
@@ -137,12 +166,19 @@ export async function stopRecording() {
     isRecording = false;
     currentWorkflow.endTime = Date.now();
     // Get all queued screenshots
-    const { flushScreenshotQueue } = await import('./screenshot');
+    const { flushScreenshotQueue, getPendingScreenshots, clearPendingScreenshots } = await import('./screenshot');
     const queuedScreenshots = flushScreenshotQueue();
+    const pendingScreenshots = await getPendingScreenshots();
+    currentWorkflow.screenshots = mergeScreenshots(currentWorkflow.screenshots || [], queuedScreenshots, pendingScreenshots);
+    logInfo('Record', 'Preparing workflow for upload', {
+        screenshotsMerged: currentWorkflow.screenshots.length,
+        pendingCount: pendingScreenshots.length,
+        queuedCount: queuedScreenshots.length,
+    }, true);
     // Send workflow to backend
     try {
         await sendWorkflowToBackend(currentWorkflow);
-        logInfo('Record', 'Workflow sent to backend', { workflowId: currentWorkflow.id });
+        logInfo('Record', 'Workflow sent to backend', { workflowId: currentWorkflow.id }, true);
     }
     catch (error) {
         logWarn('Record', 'Failed to send workflow (will retry later)', error.message);
@@ -151,6 +187,13 @@ export async function stopRecording() {
             failedWorkflow: currentWorkflow,
             failedWorkflowTimestamp: Date.now()
         });
+    }
+    // Clear persisted screenshots after we have handed them off
+    try {
+        await clearPendingScreenshots();
+    }
+    catch (error) {
+        logWarn('Record', 'Failed to clear pending screenshots after upload', error);
     }
     // Clear current workflow
     currentWorkflow = null;
@@ -175,7 +218,21 @@ export async function stopRecording() {
             logError('Record', 'Failed to update storage', error);
         }
     }
-    logInfo('Record', 'Recording stopped');
+    logInfo('Record', 'Recording stopped', undefined, true);
+}
+function mergeScreenshots(current, queued, pending) {
+    const latestByStep = new Map();
+    [current, queued, pending].forEach(list => {
+        for (const screenshot of list) {
+            if (!screenshot)
+                continue;
+            const existing = latestByStep.get(screenshot.stepIndex);
+            if (!existing || (existing.timestamp ?? 0) < (screenshot.timestamp ?? 0)) {
+                latestByStep.set(screenshot.stepIndex, screenshot);
+            }
+        }
+    });
+    return Array.from(latestByStep.values()).sort((a, b) => a.stepIndex - b.stepIndex);
 }
 /**
  * Record DOM event
@@ -230,7 +287,6 @@ export async function recordEvent(event) {
  * Send workflow to backend for step assembly
  */
 async function sendWorkflowToBackend(workflow) {
-    const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3001';
     try {
         // Include screenshots but limit their size to prevent payload issues
         // Keep only the most recent screenshots (last 20) to reduce payload size

@@ -75,7 +75,14 @@ export class StepProcessor {
           } catch (error) {
             console.error('[StepProcessor] Failed to upload screenshot:', error);
           }
+        } else {
+          console.warn('[StepProcessor] Screenshot payload missing for step', stepIndex, {
+            hasBase64: !!matchingScreenshot?.screenshotBase64,
+            eventTimestamp: event.timestamp,
+          });
         }
+      } else {
+        console.warn('[StepProcessor] No screenshots attached to workflow for step', stepIndex);
       }
 
       // Generate initial description from event

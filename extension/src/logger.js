@@ -23,12 +23,16 @@ async function persistEntry(entry) {
         console.error('[Logger] Failed to persist log entry:', error);
     }
 }
-export function logInfo(source, message, meta) {
+export function logInfo(source, message, meta, persist = false) {
     if (meta !== undefined) {
         console.log(`[${source}] ${message}`, meta);
     }
     else {
         console.log(`[${source}] ${message}`);
+    }
+    if (persist) {
+        const entry = createEntry('info', source, message, meta);
+        void persistEntry(entry);
     }
 }
 export function logWarn(source, message, meta) {

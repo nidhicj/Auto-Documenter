@@ -89,6 +89,17 @@ docker compose up -d
 - AI Service: http://localhost:8000
 - MinIO Console: http://localhost:9001 (minioadmin/minioadmin123)
 
+### Debugging the browser extension and guide ingestion
+
+If the extension popup buttons appear unresponsive or screenshots are missing from the `http://localhost:3000/guide` view, use the following checks:
+
+1. **Extension logs (persisted in the popup):** the popup's **Refresh Logs** button reads entries stored via `chrome.storage.local`. Key lifecycle events ("Received runtime message", "Recording started", "Recording stopped", and network send status) are persisted so you can see whether the background service worker handled the Start/Stop events.
+2. **Service worker console:** open `chrome://extensions`, click **Service Worker** under the AutoDoc AI extension, and check for runtime errors (for example, permission errors when injecting the content script or capturing the visible tab).
+3. **Backend container logs:** run `docker compose logs -f backend worker` to see workflow ingestion and screenshot processing. The `StepProcessor` logs when screenshot payloads are missing for a step so you can tell whether the extension sent image data or it failed in the backend pipeline.
+4. **AI/Media services:** if screenshots upload but URLs are broken, also inspect `docker compose logs -f ai-service minio` to confirm AI enrichment and S3/MinIO availability.
+
+This flow helps pinpoint where the capture failed: popup ➜ background service worker ➜ POST `/api/guides/workflows` ➜ worker queue ➜ MinIO uploads.
+
 ## Project Structure
 
 ```

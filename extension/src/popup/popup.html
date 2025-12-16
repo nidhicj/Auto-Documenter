@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Scribe AI</title>
+  <title>AutoDoc</title>
   <style>
     body {
       width: 320px;
@@ -69,11 +69,66 @@
       font-size: 12px;
       color: #666;
     }
+    .log-viewer {
+      margin-top: 16px;
+      display: none;
+    }
+    .log-viewer.visible {
+      display: block;
+    }
+    .log-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .log-header h3 {
+      margin: 0;
+      font-size: 14px;
+      color: #333;
+    }
+    .btn-log-toggle {
+      background: #666;
+      color: white;
+      font-size: 12px;
+      padding: 6px 12px;
+      margin-top: 8px;
+    }
+    .btn-clear-logs {
+      background: #999;
+      color: white;
+      font-size: 11px;
+      padding: 4px 8px;
+    }
+    .log-content {
+      max-height: 300px;
+      overflow-y: auto;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 8px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 10px;
+      line-height: 1.4;
+    }
+    .log-line {
+      margin: 2px 0;
+      word-break: break-all;
+    }
+    .log-line.error {
+      color: #f48771;
+    }
+    .log-line.warn {
+      color: #dcdcaa;
+    }
+    .log-line.info {
+      color: #9cdcfe;
+    }
   </style>
 </head>
 <body>
   <div class="header">
-    <h1>📝 Scribe AI</h1>
+    <h1>📝 AutoDoc</h1>
   </div>
   
   <div id="status" class="status idle">
@@ -91,7 +146,17 @@
     4. View your guide in the app
   </div>
 
-  <script type="module" src="./popup.ts"></script>
+  <button id="btnLogToggle" class="btn-log-toggle">Show Logs</button>
+
+  <div id="logViewer" class="log-viewer">
+    <div class="log-header">
+      <h3>Extension Logs</h3>
+      <button id="btnClearLogs" class="btn-clear-logs">Clear</button>
+    </div>
+    <div id="logContent" class="log-content"></div>
+  </div>
+
+  <script type="module" src="./popup.js"></script>
 </body>
 </html>
 

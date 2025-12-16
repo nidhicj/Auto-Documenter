@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Scribe AI - Workflow Documentation Platform',
+  title: 'AutoDoc - Workflow Documentation Platform',
   description: 'Capture workflows and create step-by-step guides',
 }
 

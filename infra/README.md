@@ -1,6 +1,6 @@
 # Infrastructure
 
-This directory contains infrastructure-as-code configurations for deploying Scribe AI to production.
+This directory contains infrastructure-as-code configurations for deploying AutoDoc to production.
 
 ## Terraform
 

@@ -1,4 +1,4 @@
-# Scribe AI
+# AutoDoc
 
 A production-grade platform that captures user workflows (screenshots + DOM actions), turns them into editable step-by-step guides, and generates AI-powered documentation.
 

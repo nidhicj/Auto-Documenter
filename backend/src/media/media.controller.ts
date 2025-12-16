@@ -6,7 +6,10 @@ import {
   Param,
   UseGuards,
   Request,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { MediaService } from './media.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -41,6 +44,62 @@ export class MediaController {
   ) {
     // Store upload metadata
     return { success: true, key: body.key };
+  }
+
+  /**
+   * Upload screenshot via backend (proxies to MinIO to avoid CORS issues)
+   */
+  @Post('upload')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('file', {
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB limit for screenshots
+    },
+  }))
+  async uploadScreenshot(
+    @UploadedFile() file: any,
+    @Body() body: { key?: string; stepIndex?: string; timestamp?: string; domEvent?: string },
+    @Request() req: any,
+  ) {
+    console.log('[MediaController] Upload request received:', {
+      hasFile: !!file,
+      fileSize: file?.size,
+      body,
+      userId: req.user?.id,
+      hasUser: !!req.user,
+      userEmail: req.user?.email,
+    });
+    console.log('[MediaController] Request headers:', {
+      authorization: req.headers?.authorization ? 'PRESENT' : 'MISSING',
+      contentType: req.headers?.['content-type'],
+    });
+
+    if (!file) {
+      console.error('[MediaController] No file provided in request');
+      throw new Error('No file provided');
+    }
+    
+    const key = body.key || `screenshots/${Date.now()}-${Math.random().toString(36).substring(7)}.png`;
+    const finalKey = req.user?.organizationId
+      ? `orgs/${req.user.organizationId}/${key}`
+      : key;
+    
+    console.log('[MediaController] Uploading to MinIO with key:', finalKey);
+    
+    try {
+      await this.mediaService.uploadScreenshot(finalKey, file.buffer);
+      const url = await this.mediaService.getMediaUrl(finalKey);
+      
+      console.log('[MediaController] Upload successful:', { key: finalKey, url });
+      
+      return {
+        url,
+        key: finalKey,
+      };
+    } catch (error) {
+      console.error('[MediaController] Upload failed:', error);
+      throw error;
+    }
   }
 
   /**

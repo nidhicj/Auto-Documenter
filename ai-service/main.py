@@ -9,7 +9,7 @@ from app.pii import PIIService
 from app.composer import DocumentComposer
 from app.embeddings import EmbeddingService
 
-app = FastAPI(title="Scribe AI Service", version="1.0.0")
+app = FastAPI(title="AutoDoc Service", version="1.0.0")
 
 # CORS
 app.add_middleware(

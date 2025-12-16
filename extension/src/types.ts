@@ -1,6 +1,8 @@
 export interface ScreenshotData {
   stepIndex: number;
-  screenshotBase64: string;
+  screenshotBase64?: string; // Optional: only used temporarily during upload
+  screenshotUrl?: string; // MinIO URL after upload
+  screenshotKey?: string; // MinIO key for reference
   domEvent: DOMEvent;
   timestamp: number;
 }
@@ -31,10 +33,12 @@ export interface WorkflowEvent {
 
 export interface PendingScreenshot {
   stepIndex: number;
-  screenshotBase64: string;
+  screenshotBase64: string; // Keep base64 for retry uploads
+  screenshotKey?: string; // MinIO key if upload was attempted
   domEvent: DOMEvent;
   timestamp: number;
   retryCount: number;
+  key: string;
 }
 
 export interface UploadResponse {

@@ -24,10 +24,16 @@ export class StepProcessor {
       const screenshot = workflow.screenshots[i];
       const event = screenshot.domEvent;
 
-      // Upload screenshot if not already uploaded
+      // Use screenshot URL if already uploaded to MinIO, otherwise upload from base64
       let screenshotUri = null;
-      if (screenshot.screenshotBase64) {
-        // Convert base64 to buffer
+      if (screenshot.screenshotUrl) {
+        // Already uploaded to MinIO, use the URL
+        screenshotUri = screenshot.screenshotUrl;
+      } else if (screenshot.screenshotKey) {
+        // Has MinIO key, construct URL
+        screenshotUri = await this.mediaService.getMediaUrl(screenshot.screenshotKey);
+      } else if (screenshot.screenshotBase64) {
+        // Convert base64 to buffer and upload
         const base64Data = screenshot.screenshotBase64.split(',')[1];
         const buffer = Buffer.from(base64Data, 'base64');
 

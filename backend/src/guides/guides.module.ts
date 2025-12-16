@@ -6,6 +6,7 @@ import { Guide } from './entities/guide.entity';
 import { Step } from './entities/step.entity';
 import { BullModule } from '@nestjs/bull';
 import { StepProcessor } from './step.processor';
+import { MediaModule } from '../media/media.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { StepProcessor } from './step.processor';
     BullModule.registerQueue({
       name: 'step-processing',
     }),
+    MediaModule,
   ],
   controllers: [GuidesController],
   providers: [GuidesService, StepProcessor],

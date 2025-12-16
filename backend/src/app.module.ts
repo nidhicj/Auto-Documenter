@@ -17,7 +17,32 @@ import { RedactionModule } from './redaction/redaction.module';
     }),
     TypeOrmModule.forRoot({
       type: 'postgres',
-      url: process.env.DATABASE_URL,
+      url: (() => {
+        // Check if DATABASE_URL is set
+        if (process.env.DATABASE_URL) {
+          // Validate that password exists in the URL
+          const url = process.env.DATABASE_URL;
+          if (!url.includes('@') || url.split('@')[0].split(':').length < 3) {
+            console.error('[TypeORM] DATABASE_URL is malformed. Expected format: postgresql://user:password@host:port/db');
+          }
+          return url;
+        }
+        
+        // Fallback to individual env vars if DATABASE_URL is not set
+        const host = process.env.POSTGRES_HOST || 'localhost';
+        const port = parseInt(process.env.POSTGRES_PORT || '5432');
+        const username = process.env.POSTGRES_USER || 'postgres';
+        const password = process.env.POSTGRES_PASSWORD;
+        const database = process.env.POSTGRES_DB || 'autodoc';
+        
+        if (!password || password === '') {
+          console.error('[TypeORM] POSTGRES_PASSWORD is not set or empty!');
+          console.error('[TypeORM] Please set DATABASE_URL or POSTGRES_PASSWORD environment variable.');
+          throw new Error('Database password is required. Set DATABASE_URL or POSTGRES_PASSWORD environment variable.');
+        }
+        
+        return `postgresql://${username}:${password}@${host}:${port}/${database}`;
+      })(),
       autoLoadEntities: true,
       synchronize: process.env.NODE_ENV === 'development',
       logging: process.env.NODE_ENV === 'development',

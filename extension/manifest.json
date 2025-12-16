@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Scribe AI",
+  "name": "AutoDoc",
   "version": "1.0.0",
   "description": "Capture workflows with screenshots and DOM actions",
   "permissions": [

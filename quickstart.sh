@@ -1,8 +1,6 @@
-# Frontend
-cd frontend && npm install && cd ..
-
-# AI Service
-cd ai-service && pip install -r requirements.txt && cd ..
-
-cd backend
-cp .env.example .env
+tar \
+  --exclude='**/.env*' \
+  --exclude='node_modules' \
+  --exclude='**/node_modules' \
+  --exclude='build' \
+  -czvf extension.tar.gz .

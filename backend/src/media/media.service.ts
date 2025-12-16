@@ -45,6 +45,13 @@ export class MediaService {
   }
 
   /**
+   * Upload screenshot directly (used by backend proxy endpoint)
+   */
+  async uploadScreenshot(key: string, buffer: Buffer): Promise<void> {
+    await this.s3Service.upload(key, buffer, 'image/png');
+  }
+
+  /**
    * Get public URL for media
    */
   async getMediaUrl(key: string): Promise<string> {

@@ -1,0 +1,8 @@
+hckojgnjbpkjdagddfjcidlenkghdhdo
+
+EXT_ID="hckojgnjbpkjdagddfjcidlenkghdhdo"
+
+curl -i -X OPTIONS "http://localhost:3001/api/auth/login" \
+  -H "Origin: chrome-extension://$EXT_ID" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: content-type"

@@ -45,7 +45,7 @@ export class MediaService {
   }
 
   /**
-   * Upload screenshot directly (used by backend proxy endpoint)
+   * Upload screenshot directly (used by backend pro  xy endpoint)
    */
   async uploadScreenshot(key: string, buffer: Buffer): Promise<void> {
     await this.s3Service.upload(key, buffer, 'image/png');
@@ -54,8 +54,14 @@ export class MediaService {
   /**
    * Get public URL for media
    */
+  // async getMediaUrl(key: string): Promise<string> {
+  //   return this.s3Service.getPublicUrl(key);
+  // }
+
   async getMediaUrl(key: string): Promise<string> {
-    return this.s3Service.getPublicUrl(key);
+    // 7 days. Adjust if you want shorter/longer.
+    const expiresIn = 60 * 60 * 24 * 7;
+    return this.s3Service.getSignedDownloadUrl(key, expiresIn);
   }
 
   /**

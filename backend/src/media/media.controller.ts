@@ -11,7 +11,8 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MediaService } from './media.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AnyAuthGuard } from '../auth/any-auth.guard';
+import { S3Service } from './s3.service'; // adjust import path
 
 @Controller('media')
 export class MediaController {
@@ -21,7 +22,7 @@ export class MediaController {
    * Get signed URL for screenshot upload
    */
   @Post('signed-url')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AnyAuthGuard)
   async getSignedUrl(
     @Body() body: { key?: string; contentType: string; expiresIn?: number },
     @Request() req: any,
@@ -38,7 +39,7 @@ export class MediaController {
    * Notify backend that upload is complete
    */
   @Post('upload-complete')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AnyAuthGuard)
   async uploadComplete(
     @Body() body: { key: string; stepIndex: number; timestamp: number; domEvent: any },
   ) {
@@ -50,7 +51,7 @@ export class MediaController {
    * Upload screenshot via backend (proxies to MinIO to avoid CORS issues)
    */
   @Post('upload')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AnyAuthGuard)
   @UseInterceptors(FileInterceptor('file', {
     limits: {
       fileSize: 10 * 1024 * 1024, // 10MB limit for screenshots
@@ -65,7 +66,7 @@ export class MediaController {
       hasFile: !!file,
       fileSize: file?.size,
       body,
-      userId: req.user?.id,
+      userId: req.user?.userId,
       hasUser: !!req.user,
       userEmail: req.user?.email,
     });
@@ -106,7 +107,7 @@ export class MediaController {
    * Get media URL
    */
   @Get(':key')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AnyAuthGuard)
   async getMediaUrl(@Param('key') key: string) {
     const url = await this.mediaService.getMediaUrl(key);
     return { url };

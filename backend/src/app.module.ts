@@ -44,7 +44,7 @@ import { RedactionModule } from './redaction/redaction.module';
         return `postgresql://${username}:${password}@${host}:${port}/${database}`;
       })(),
       autoLoadEntities: true,
-      synchronize: process.env.NODE_ENV === 'development',
+      synchronize: false,
       logging: process.env.NODE_ENV === 'development',
     }),
     BullModule.forRoot({

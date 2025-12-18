@@ -39,8 +39,8 @@ export class Step {
     detectedPII: Array<{ type: string; value: string; confidence: number }>;
   };
 
-  @Column()
-  timestamp: number;
+  @Column({ type: 'bigint' })
+  timestamp: string;
 
   @CreateDateColumn()
   createdAt: Date;

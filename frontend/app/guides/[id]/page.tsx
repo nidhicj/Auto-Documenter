@@ -32,11 +32,9 @@ export default function GuideEditorPage() {
 
   const fetchGuide = async () => {
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch(`http://localhost:3001/api/guides/${params.id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include'
+
       })
       const data = await response.json()
       setGuide(data)
@@ -54,10 +52,8 @@ export default function GuideEditorPage() {
       const token = localStorage.getItem('token')
       await fetch(`http://localhost:3001/api/guides/${params.id}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(guide),
       })
       alert('Guide saved!')

@@ -11,12 +11,17 @@ export class AuthService {
       email: user.email,
       organizationId: user.organizationId,
     };
-    // Generate token without expiration for development
-    // Since JwtModule has no expiresIn in signOptions, tokens won't expire
+
     const token = this.jwtService.sign(payload);
-    console.log('[AuthService] Generated token (first 50 chars):', token.substring(0, 50) + '...');
+    // console.log('[AuthService] Generated token (first 50 chars):', token.substring(0, 50) + '...');
+
     return {
       access_token: token,
+      user: {
+        userId: user.userId,
+        email: user.email,
+        organizationId: user.organizationId,
+      },
     };
   }
 

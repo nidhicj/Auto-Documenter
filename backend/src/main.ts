@@ -1,12 +1,14 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import * as cookieParser from "cookie-parser";
+
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     bodyParser: false, // Disable default body parser to configure manually
   });
-
+  app.use(cookieParser());
   // Increase body size limit for file uploads (screenshots can be large)
   // Default is 100kb, we need at least 10MB for screenshots
   const express = require('express');

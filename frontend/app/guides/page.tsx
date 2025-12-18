@@ -22,11 +22,9 @@ export default function GuidesPage() {
 
   const fetchGuides = async () => {
     try {
-      const token = localStorage.getItem('token')
       const response = await fetch('http://localhost:3001/api/guides', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include'
+
       })
       const data = await response.json()
       setGuides(data)
@@ -41,12 +39,10 @@ export default function GuidesPage() {
     if (!confirm('Are you sure you want to delete this guide?')) return
 
     try {
-      const token = localStorage.getItem('token')
       await fetch(`http://localhost:3001/api/guides/${id}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include'
+
       })
       fetchGuides()
     } catch (error) {

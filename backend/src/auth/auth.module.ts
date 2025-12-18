@@ -3,8 +3,9 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { JwtStrategy } from './jwt.strategy';
+import { JwtHeaderStrategy } from './jwt.strategy';
 import { OAuth2Strategy } from './oauth2.strategy';
+import { JwtCookieStrategy } from './jwt-cookie.strategy';
 
 // Only include OAuth2Strategy if OAuth2 is configured
 const isOAuth2Configured = () => {
@@ -32,7 +33,8 @@ const isOAuth2Configured = () => {
   controllers: [AuthController],
   providers: [
     AuthService,
-    JwtStrategy,
+    JwtHeaderStrategy,
+    JwtCookieStrategy,
     ...(isOAuth2Configured() ? [OAuth2Strategy] : []),
   ],
   exports: [AuthService],

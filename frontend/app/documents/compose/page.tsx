@@ -8,7 +8,7 @@ export default function DocumentComposerPage() {
   const router = useRouter()
   const [guideId, setGuideId] = useState('')
   const [style, setStyle] = useState('professional')
-  const [document, setDocument] = useState('')
+  const [documentContent, setDocumentContent] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleCompose = async () => {
@@ -25,9 +25,7 @@ export default function DocumentComposerPage() {
       const guideResponse = await fetch(
         `http://localhost:3001/api/guides/${guideId}`,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          credentials: 'include'
         }
       )
       const guide = await guideResponse.json()
@@ -35,9 +33,7 @@ export default function DocumentComposerPage() {
       // Compose document
       const response = await fetch('http://localhost:8000/documents/compose', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        credentials: 'include',
         body: JSON.stringify({
           guideId,
           steps: guide.steps,
@@ -45,7 +41,7 @@ export default function DocumentComposerPage() {
         }),
       })
       const data = await response.json()
-      setDocument(data.document)
+      setDocumentContent(data.document)
     } catch (error) {
       console.error('Failed to compose document:', error)
       alert('Failed to compose document')
@@ -96,13 +92,13 @@ export default function DocumentComposerPage() {
         </div>
       </div>
 
-      {document && (
+      {documentContent && (
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold">Generated Document</h2>
             <button
               onClick={() => {
-                const blob = new Blob([document], { type: 'text/markdown' })
+                const blob = new Blob([documentContent], { type: 'text/markdown' })
                 const url = URL.createObjectURL(blob)
                 const a = document.createElement('a')
                 a.href = url
@@ -116,7 +112,7 @@ export default function DocumentComposerPage() {
             </button>
           </div>
           <div className="prose max-w-none">
-            <pre className="whitespace-pre-wrap text-sm">{document}</pre>
+            <pre className="whitespace-pre-wrap text-sm">{documentContent}</pre>
           </div>
         </div>
       )}

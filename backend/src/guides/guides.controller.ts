@@ -10,10 +10,10 @@ import {
   Request,
 } from '@nestjs/common';
 import { GuidesService } from './guides.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AnyAuthGuard } from '../auth/any-auth.guard';
 
 @Controller('guides')
-@UseGuards(JwtAuthGuard)
+@UseGuards(AnyAuthGuard)
 export class GuidesController {
   constructor(private readonly guidesService: GuidesService) {}
 

@@ -1,9 +1,9 @@
 import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
 import { RedactionService } from './redaction.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AnyAuthGuard } from '../auth/any-auth.guard';
 
 @Controller('redaction')
-@UseGuards(JwtAuthGuard)
+@UseGuards(AnyAuthGuard)
 export class RedactionController {
   constructor(private readonly redactionService: RedactionService) {}
 

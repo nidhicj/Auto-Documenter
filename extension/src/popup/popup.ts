@@ -1,169 +1,183 @@
-import { logInfo, logError, logWarn, getBrowserLogs, clearBrowserLogs, formatLogEntry, LogEntry } from '../logger';
+import {
+  logInfo,
+  logError,
+  logWarn,
+  getBrowserLogs,
+  clearBrowserLogs,
+  formatLogEntry,
+  LogEntry,
+} from '../logger';
 
-console.log('[Popup] Popup script loaded');
+const btnStart = document.getElementById('btnStart') as HTMLButtonElement | null;
+const btnStop = document.getElementById('btnStop') as HTMLButtonElement | null;
+const statusElement = document.getElementById('status') as HTMLDivElement | null;
 
-const btnStart = document.getElementById('btnStart') as HTMLButtonElement;
-const btnStop = document.getElementById('btnStop') as HTMLButtonElement;
-const statusElement = document.getElementById('status') as HTMLDivElement;
-const btnLogToggle = document.getElementById('btnLogToggle') as HTMLButtonElement;
-const btnClearLogs = document.getElementById('btnClearLogs') as HTMLButtonElement;
-const logViewer = document.getElementById('logViewer') as HTMLDivElement;
-const logContent = document.getElementById('logContent') as HTMLDivElement;
+const btnLogToggle = document.getElementById('btnLogToggle') as HTMLButtonElement | null;
+const btnClearLogs = document.getElementById('btnClearLogs') as HTMLButtonElement | null;
+const logViewer = document.getElementById('logViewer') as HTMLDivElement | null;
+const logContent = document.getElementById('logContent') as HTMLDivElement | null;
 
-if (!btnStart || !btnStop || !statusElement) {
-  console.error('[Popup] Failed to find required DOM elements:', {
-    btnStart: !!btnStart,
-    btnStop: !!btnStop,
-    statusElement: !!statusElement,
-  });
-} else {
-  console.log('[Popup] DOM elements found successfully');
+function mustHave<T>(value: T | null, name: string): T {
+  if (!value) throw new Error(`Missing required DOM element: ${name}`);
+  return value;
 }
 
-// Check recording status on load
-console.log('[Popup] Initial status check...');
-updateStatus();
+function fireInfo(message: string, data?: any, code?: string) {
+  void logInfo('Popup', message, data, code).catch(() => {});
+}
+function fireWarn(message: string, data?: any, code?: string) {
+  void logWarn('Popup', message, data, code).catch(() => {});
+}
 
-// Start recording
-btnStart.addEventListener('click', async () => {
-  await logInfo('Popup', 'User clicked Start Recording', undefined, 'R1');
-  console.log('[Popup] Start button clicked');
-  try {
-    await logInfo('Popup', 'Sending START_RECORDING to background', undefined, 'R2');
-    console.log('[Popup] Sending START_RECORDING message to background...');
-    const response = await chrome.runtime.sendMessage({ type: 'START_RECORDING' });
-    console.log('[Popup] Received response from background:', response);
-    if (response && response.success) {
-      await logInfo('Popup', 'Background reported recording started', { response }, 'R3');
-      console.log('[Popup] Recording started successfully');
-      updateStatus();
-    } else {
-      const errorMsg = response?.error || 'Unknown error';
-      await logError('Popup', 'Failed to start recording', errorMsg, 'R3_ERR');
-      console.error('[Popup] Failed to start recording:', errorMsg);
-      alert(`Failed to start recording: ${errorMsg}`);
-    }
-  } catch (error) {
-    await logError('Popup', 'Failed to start recording', error, 'R3_ERR');
-    console.error('[Popup] Exception while starting recording:', error);
-    console.error('[Popup] Error details:', {
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
-    alert(`Failed to start recording: ${error instanceof Error ? error.message : String(error)}`);
-  }
-});
-
-// Stop recording
-btnStop.addEventListener('click', async () => {
-  await logInfo('Popup', 'User clicked Stop Recording', undefined, 'R_STOP_1');
-  try {
-    await logInfo('Popup', 'Sending STOP_RECORDING to background', undefined, 'R_STOP_2');
-    const response = await chrome.runtime.sendMessage({ type: 'STOP_RECORDING' });
-    if (response && response.success) {
-      await logInfo('Popup', 'Background reported recording stopped', { response }, 'R_STOP_3');
-      updateStatus();
-    } else {
-      const errorMsg = response?.error || 'Unknown error';
-      await logError('Popup', 'Failed to stop recording', errorMsg, 'R_STOP_3_ERR');
-      alert(`Failed to stop recording: ${errorMsg}`);
-    }
-  } catch (error) {
-    await logError('Popup', 'Failed to stop recording', error, 'R_STOP_3_ERR');
-    console.error('Failed to stop recording:', error);
-    alert('Failed to stop recording');
-  }
-});
-
-// Update UI status
 async function updateStatus(): Promise<void> {
+  const statusEl = mustHave(statusElement, 'status');
+  const startBtn = mustHave(btnStart, 'btnStart');
+  const stopBtn = mustHave(btnStop, 'btnStop');
+
   try {
-    console.log('[Popup] Checking recording status...');
     const response = await chrome.runtime.sendMessage({ type: 'GET_RECORDING_STATUS' });
-    console.log('[Popup] Status response:', response);
     const isRecording = response?.isRecording ?? false;
 
     if (isRecording) {
-      statusElement.textContent = '🔴 Recording...';
-      statusElement.className = 'status recording';
-      btnStart.disabled = true;
-      btnStop.disabled = false;
-      console.log('[Popup] Status updated: Recording');
+      statusEl.textContent = '🔴 Recording...';
+      statusEl.className = 'status recording';
+      startBtn.disabled = true;
+      stopBtn.disabled = false;
     } else {
-      statusElement.textContent = 'Ready to record';
-      statusElement.className = 'status idle';
-      btnStart.disabled = false;
-      btnStop.disabled = true;
-      console.log('[Popup] Status updated: Idle');
+      statusEl.textContent = '⚪ Not recording';
+      statusEl.className = 'status idle';
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
     }
   } catch (error) {
-    console.error('[Popup] Failed to get status:', error);
+    // This matters. Keep it.
+    console.error('[Popup] Failed to update status:', error);
+    statusEl.textContent = '⚠️ Status unavailable';
+    statusEl.className = 'status error';
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
   }
 }
-
-// Poll status every second when recording
-setInterval(() => {
-  updateStatus();
-}, 1000);
-
-// Log viewer functionality
-let logViewerVisible = false;
-
-btnLogToggle.addEventListener('click', async () => {
-  logViewerVisible = !logViewerVisible;
-  if (logViewerVisible) {
-    logViewer.classList.add('visible');
-    btnLogToggle.textContent = 'Hide Logs';
-    await refreshLogs();
-    // Auto-refresh logs every 2 seconds when visible
-    if (!(window as any).__logRefreshInterval) {
-      (window as any).__logRefreshInterval = setInterval(async () => {
-        if (logViewerVisible) {
-          await refreshLogs();
-        }
-      }, 2000);
-    }
-  } else {
-    logViewer.classList.remove('visible');
-    btnLogToggle.textContent = 'Show Logs';
-    if ((window as any).__logRefreshInterval) {
-      clearInterval((window as any).__logRefreshInterval);
-      (window as any).__logRefreshInterval = null;
-    }
-  }
-});
-
-btnClearLogs.addEventListener('click', async () => {
-  if (confirm('Clear all logs?')) {
-    await clearBrowserLogs();
-    await refreshLogs();
-  }
-});
 
 async function refreshLogs(): Promise<void> {
+  const viewer = mustHave(logViewer, 'logViewer');
+  const content = mustHave(logContent, 'logContent');
+
+  // Don’t waste cycles if the viewer is hidden
+  if (viewer.style.display === 'none') return;
+
   try {
-    const logs = await getBrowserLogs();
-    logContent.innerHTML = '';
-    
-    if (logs.length === 0) {
-      logContent.innerHTML = '<div class="log-line">No logs yet. Start a recording to see logs.</div>';
+    const logs = (await getBrowserLogs()) as LogEntry[];
+    content.innerHTML = '';
+
+    if (!logs || logs.length === 0) {
+      content.innerHTML = `<div class="log-line">No logs yet.</div>`;
       return;
     }
-    
+
     logs.forEach((entry, index) => {
       const line = document.createElement('div');
-      line.className = `log-line ${entry.level}`;
+      line.className = `log-line ${entry.level || ''}`.trim();
       line.textContent = formatLogEntry(entry, index);
-      logContent.appendChild(line);
+      content.appendChild(line);
     });
-    
-    // Auto-scroll to bottom
-    logContent.scrollTop = logContent.scrollHeight;
+
+    content.scrollTop = content.scrollHeight;
   } catch (error) {
     console.error('[Popup] Failed to refresh logs:', error);
-    logContent.innerHTML = `<div class="log-line error">Error loading logs: ${error instanceof Error ? error.message : String(error)}</div>`;
+    content.innerHTML = `<div class="log-line error">Error loading logs: ${
+      error instanceof Error ? error.message : String(error)
+    }</div>`;
   }
 }
 
+// ---- Main wiring ----
 
+(async () => {
+  try {
+    // Validate required UI pieces early
+    mustHave(btnStart, 'btnStart');
+    mustHave(btnStop, 'btnStop');
+    mustHave(statusElement, 'status');
 
+    // Initial status
+    await updateStatus();
+
+    // Start recording
+    btnStart!.addEventListener('click', async () => {
+      fireInfo('User clicked Start Recording', undefined, 'R1');
+
+      try {
+        const response = await chrome.runtime.sendMessage({ type: 'START_RECORDING' });
+
+        if (response?.success) {
+          fireInfo('Recording started', undefined, 'R2_OK');
+          await updateStatus();
+        } else {
+          const errorMsg = response?.error || 'Unknown error';
+          await logError('Popup', 'Failed to start recording', errorMsg, 'R2_ERR');
+          await updateStatus();
+        }
+      } catch (error) {
+        await logError('Popup', 'START_RECORDING message failed', error, 'R2_ERR_SEND');
+        await updateStatus();
+      }
+    });
+
+    // Stop recording
+    btnStop!.addEventListener('click', async () => {
+      fireInfo('User clicked Stop Recording', undefined, 'R4');
+
+      try {
+        const response = await chrome.runtime.sendMessage({ type: 'STOP_RECORDING' });
+
+        if (response?.success) {
+          fireInfo('Recording stopped', undefined, 'R5_OK');
+          await updateStatus();
+        } else {
+          const errorMsg = response?.error || 'Unknown error';
+          await logError('Popup', 'Failed to stop recording', errorMsg, 'R5_ERR');
+          await updateStatus();
+        }
+      } catch (error) {
+        await logError('Popup', 'STOP_RECORDING message failed', error, 'R5_ERR_SEND');
+        await updateStatus();
+      }
+    });
+
+    // Log viewer toggle
+    if (btnLogToggle && logViewer) {
+      btnLogToggle.addEventListener('click', async () => {
+        const isHidden = logViewer.style.display === 'none' || !logViewer.style.display;
+        logViewer.style.display = isHidden ? 'block' : 'none';
+
+        // Only log the action once; no console spam.
+        fireInfo(isHidden ? 'Log viewer opened' : 'Log viewer closed', undefined, 'LOG_UI');
+
+        if (isHidden) await refreshLogs();
+      });
+    }
+
+    // Clear logs
+    if (btnClearLogs) {
+      btnClearLogs.addEventListener('click', async () => {
+        fireWarn('User cleared logs', undefined, 'LOG_CLEAR');
+        try {
+          await clearBrowserLogs();
+          await refreshLogs();
+        } catch (error) {
+          await logError('Popup', 'Failed to clear logs', error, 'LOG_CLEAR_ERR');
+        }
+      });
+    }
+
+    // Optional: refresh logs periodically only if viewer is open
+    setInterval(() => {
+      void refreshLogs();
+    }, 2000);
+  } catch (error) {
+    // Hard failure: missing DOM or bootstrap issues.
+    console.error('[Popup] Initialization failed:', error);
+    await logError('Popup', 'Initialization failed', error, 'POPUP_INIT_ERR');
+  }
+})();

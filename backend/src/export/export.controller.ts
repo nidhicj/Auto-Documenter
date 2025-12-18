@@ -1,10 +1,10 @@
 import { Controller, Get, Param, Res, UseGuards, Request } from '@nestjs/common';
 import { Response } from 'express';
 import { ExportService } from './export.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AnyAuthGuard } from '../auth/any-auth.guard';
 
 @Controller('export')
-@UseGuards(JwtAuthGuard)
+@UseGuards(AnyAuthGuard)
 export class ExportController {
   constructor(private readonly exportService: ExportService) {}
 

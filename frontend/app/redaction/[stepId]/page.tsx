@@ -43,9 +43,7 @@ export default function RedactionPage() {
       const stepResponse = await fetch(
         `http://localhost:3001/api/guides/steps/${params.stepId}`,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          credentials: 'include',
         }
       )
       const step = await stepResponse.json()
@@ -54,10 +52,8 @@ export default function RedactionPage() {
       // Process redaction
       const response = await fetch('http://localhost:3001/api/redaction/process', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           stepId: params.stepId,
           screenshotUri: step.screenshotUri,
@@ -79,10 +75,8 @@ export default function RedactionPage() {
       const token = localStorage.getItem('token')
       const response = await fetch('http://localhost:3001/api/redaction/apply', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           screenshotUri,
           blurredRegions: redactionData.pii.blurredRegions,

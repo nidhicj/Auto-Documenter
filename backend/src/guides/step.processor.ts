@@ -64,23 +64,25 @@ export class StepProcessor {
   /**
    * Generate basic description from DOM event
    */
-  private generateDescription(event: any): string {
-    const { type, target } = event;
+    private generateDescription(event: any): string {
+    const type = event?.type ?? 'unknown';
+    const target = event?.target;
+
+    const tag = target?.tagName ? target.tagName.toLowerCase() : 'element';
+    const id = target?.id ? `#${target.id}` : '';
+    const cls = target?.className ? `.${String(target.className).split(' ')[0]}` : '';
 
     switch (type) {
       case 'click':
-        return `Click on ${target.tagName.toLowerCase()}${target.id ? `#${target.id}` : ''}${target.className ? `.${target.className.split(' ')[0]}` : ''}`;
+        return `Click on ${tag}${id}${cls}`;
       case 'navigation':
-        return `Navigate to ${event.url}`;
+        return `Navigate to ${event?.url ?? 'a page'}`;
       case 'input':
-        return `Enter text in ${target.tagName.toLowerCase()}${target.id ? `#${target.id}` : ''}`;
-      case 'dom_change':
-        return 'Page content changed';
+        return `Enter text in ${tag}${id}`;
+      case 'hover':
+        return `Hover over ${tag}${id}${cls}`;
       default:
         return `Action: ${type}`;
     }
   }
 }
-
-
-

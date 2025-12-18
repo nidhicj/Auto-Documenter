@@ -1,17 +1,14 @@
 /**
- * Structured logging system for the extension
- * 
- * Logs are ALWAYS output to console (visible in browser DevTools):
- * - Popup logs: Right-click popup → Inspect → Console tab
- * - Background logs: chrome://extensions/ → Find extension → Click "service worker" → Console tab
- * - Content logs: Open web page → F12 → Console tab
- * 
- * Logs are also stored in chrome.storage.local (can be disabled by setting ENABLE_STORAGE_LOGGING = false)
- * for viewing in the popup log viewer.
+ * Structured logging system for the extension (clean version)
+ *
+ * - Always logs to console (DevTools)
+ * - Persists only WARN/ERROR by default (INFO is console-only)
+ * - Non-blocking (log calls should not affect extension behavior)
+ * - Batched storage writes (reduces storage churn / quota risk)
+ * - Safe meta serialization (won't crash on circular data)
  */
 
 export type LogLevel = 'info' | 'warn' | 'error';
-
 export type LogSource = 'Popup' | 'Background' | 'Record' | 'Content';
 
 export interface LogEntry {
@@ -19,54 +16,130 @@ export interface LogEntry {
   level: LogLevel;
   source: LogSource;
   message: string;
-  phase?: string; // for ordered steps like "R1", "R2", "R_STOP_1"
+  phase?: string; // e.g., "R1", "AUTH_OK"
   recordingId?: string | null;
   meta?: any;
 }
 
 const STORAGE_KEY = 'browserLogs';
-const MAX_LOGS = 1000; // Limit to prevent storage bloat
+const MAX_LOGS = 500; // lowered from 1000 to reduce quota pressure
 
-// Set to false to disable storage logging (console only)
-const ENABLE_STORAGE_LOGGING = true;
+// Storage logging switches
+const ENABLE_STORAGE_LOGGING = true;      // master switch
+const STORE_INFO_LOGS = false;            // INFO -> console-only by default
+const STORE_WARN_LOGS = true;
+const STORE_ERROR_LOGS = true;
+
+// Batching controls
+const FLUSH_INTERVAL_MS = 250;
+const MAX_BUFFERED = 200; // safety valve: if spam happens, don't buffer forever
+
+// Meta safety controls
+const MAX_META_CHARS = 4000; // cap meta string size to avoid storage bloat
+
+// In-memory queue for batched writes
+let buffer: LogEntry[] = [];
+let flushTimer: number | null = null;
+
+function shouldStore(level: LogLevel): boolean {
+  if (!ENABLE_STORAGE_LOGGING) return false;
+  if (level === 'info') return STORE_INFO_LOGS;
+  if (level === 'warn') return STORE_WARN_LOGS;
+  return STORE_ERROR_LOGS;
+}
+
+function safeStringify(value: any): string {
+  try {
+    const s = JSON.stringify(value);
+    if (s.length > MAX_META_CHARS) return s.slice(0, MAX_META_CHARS) + '…[truncated]';
+    return s;
+  } catch {
+    return '[meta:unserializable]';
+  }
+}
 
 /**
- * Internal function to append a log entry to storage
+ * Format log for console output (compact + consistent)
  */
-async function appendLog(entry: LogEntry): Promise<void> {
+function formatConsoleLog(
+  source: LogSource,
+  level: LogLevel,
+  phase: string | undefined,
+  message: string,
+  recordingId?: string | null
+): string {
+  const phaseStr = phase ? `[${phase}] ` : '';
+  const ridStr = recordingId ? ` [ID:${String(recordingId).slice(0, 8)}]` : '';
+  return `${phaseStr}[${source}]${ridStr} ${message}`;
+}
+
+/**
+ * Schedule a batched flush to chrome.storage.local
+ */
+function scheduleFlush(): void {
+  if (flushTimer !== null) return;
+
+  flushTimer = setTimeout(() => {
+    flushTimer = null;
+    void flushNow();
+  }, FLUSH_INTERVAL_MS) as unknown as number;
+}
+
+/**
+ * Flush buffered logs to storage (non-blocking from callers)
+ */
+async function flushNow(): Promise<void> {
   if (!ENABLE_STORAGE_LOGGING) {
-    return; // Skip storage if disabled
+    buffer = [];
+    return;
   }
-  
+  if (buffer.length === 0) return;
+
+  const toWrite = buffer;
+  buffer = [];
+
   try {
     const result = await chrome.storage.local.get(STORAGE_KEY);
-    const logs: LogEntry[] = result[STORAGE_KEY] || [];
-    
-    logs.push(entry);
-    
-    // Keep only the most recent MAX_LOGS entries
-    if (logs.length > MAX_LOGS) {
-      logs.splice(0, logs.length - MAX_LOGS);
-    }
-    
-    await chrome.storage.local.set({ [STORAGE_KEY]: logs });
+    const existing: LogEntry[] = result[STORAGE_KEY] || [];
+
+    const merged = existing.concat(toWrite);
+
+    // Keep only most recent MAX_LOGS
+    const trimmed =
+      merged.length > MAX_LOGS ? merged.slice(merged.length - MAX_LOGS) : merged;
+
+    await chrome.storage.local.set({ [STORAGE_KEY]: trimmed });
   } catch (error) {
-    // Fallback to console if storage fails
-    console.error('[Logger] Failed to store log entry:', error, entry);
+    // Fall back to console; storage failure shouldn't break functionality.
+    console.error('[Logger] Failed to store logs:', error);
   }
 }
 
 /**
- * Format log for console output with better visibility
+ * Internal: enqueue a log entry for storage (if configured)
  */
-function formatConsoleLog(source: LogSource, level: LogLevel, phase: string | undefined, message: string, data?: any): string {
-  const phaseStr = phase ? `[${phase}] ` : '';
-  const recordingIdStr = data?.recordingId ? ` [ID:${String(data.recordingId).slice(0, 8)}]` : '';
-  return `${phaseStr}[${source}]${recordingIdStr} ${message}`;
+function enqueueForStorage(entry: LogEntry): void {
+  if (!shouldStore(entry.level)) return;
+
+  // Prevent unbounded buffer growth
+  if (buffer.length >= MAX_BUFFERED) {
+    // Drop oldest buffered entries first
+    buffer = buffer.slice(buffer.length - Math.floor(MAX_BUFFERED / 2));
+    buffer.push({
+      timestamp: Date.now(),
+      level: 'warn',
+      source: 'Background',
+      message: 'Log buffer overflow: dropping buffered logs',
+      phase: 'LOG_DROP',
+    });
+  }
+
+  buffer.push(entry);
+  scheduleFlush();
 }
 
 /**
- * Log an info message
+ * Log an info message (console always; storage optional via STORE_INFO_LOGS)
  */
 export async function logInfo(
   source: LogSource,
@@ -84,19 +157,17 @@ export async function logInfo(
     recordingId: recordingId ?? undefined,
     meta,
   };
-  
-  await appendLog(entry);
-  // Always output to console for terminal/DevTools visibility
-  const consoleMessage = formatConsoleLog(source, 'info', phase, message, { recordingId });
-  if (meta) {
-    console.log(consoleMessage, meta);
-  } else {
-    console.log(consoleMessage);
-  }
+
+  // Storage is non-blocking
+  enqueueForStorage(entry);
+
+  const consoleMessage = formatConsoleLog(source, 'info', phase, message, recordingId);
+  if (meta !== undefined) console.log(consoleMessage, meta);
+  else console.log(consoleMessage);
 }
 
 /**
- * Log a warning message
+ * Log a warning message (console always; stored by default)
  */
 export async function logWarn(
   source: LogSource,
@@ -114,19 +185,16 @@ export async function logWarn(
     recordingId: recordingId ?? undefined,
     meta,
   };
-  
-  await appendLog(entry);
-  // Always output to console for terminal/DevTools visibility
-  const consoleMessage = formatConsoleLog(source, 'warn', phase, message, { recordingId });
-  if (meta) {
-    console.warn(consoleMessage, meta);
-  } else {
-    console.warn(consoleMessage);
-  }
+
+  enqueueForStorage(entry);
+
+  const consoleMessage = formatConsoleLog(source, 'warn', phase, message, recordingId);
+  if (meta !== undefined) console.warn(consoleMessage, meta);
+  else console.warn(consoleMessage);
 }
 
 /**
- * Log an error message
+ * Log an error message (console always; stored by default)
  */
 export async function logError(
   source: LogSource,
@@ -135,14 +203,11 @@ export async function logError(
   phase?: string,
   recordingId?: string | null
 ): Promise<void> {
-  const errorMeta = error instanceof Error
-    ? {
-        message: error.message,
-        stack: error.stack,
-        name: error.name,
-      }
-    : error;
-  
+  const errorMeta =
+    error instanceof Error
+      ? { message: error.message, stack: error.stack, name: error.name }
+      : error;
+
   const entry: LogEntry = {
     timestamp: Date.now(),
     level: 'error',
@@ -152,15 +217,12 @@ export async function logError(
     recordingId: recordingId ?? undefined,
     meta: errorMeta,
   };
-  
-  await appendLog(entry);
-  // Always output to console for terminal/DevTools visibility
-  const consoleMessage = formatConsoleLog(source, 'error', phase, message, { recordingId });
-  if (errorMeta) {
-    console.error(consoleMessage, errorMeta);
-  } else {
-    console.error(consoleMessage);
-  }
+
+  enqueueForStorage(entry);
+
+  const consoleMessage = formatConsoleLog(source, 'error', phase, message, recordingId);
+  if (errorMeta !== undefined) console.error(consoleMessage, errorMeta);
+  else console.error(consoleMessage);
 }
 
 /**
@@ -168,6 +230,9 @@ export async function logError(
  */
 export async function getBrowserLogs(): Promise<LogEntry[]> {
   try {
+    // Ensure any buffered logs are flushed before reading (best effort)
+    await flushNow();
+
     const result = await chrome.storage.local.get(STORAGE_KEY);
     const logs: LogEntry[] = result[STORAGE_KEY] || [];
     return logs.sort((a, b) => a.timestamp - b.timestamp);
@@ -182,6 +247,11 @@ export async function getBrowserLogs(): Promise<LogEntry[]> {
  */
 export async function clearBrowserLogs(): Promise<void> {
   try {
+    buffer = [];
+    if (flushTimer !== null) {
+      clearTimeout(flushTimer);
+      flushTimer = null;
+    }
     await chrome.storage.local.remove(STORAGE_KEY);
   } catch (error) {
     console.error('[Logger] Failed to clear logs:', error);
@@ -189,15 +259,18 @@ export async function clearBrowserLogs(): Promise<void> {
 }
 
 /**
- * Format a log entry as a human-readable string
+ * Format a log entry as a human-readable string (safe)
  */
 export function formatLogEntry(entry: LogEntry, index?: number): string {
   const phase = entry.phase || (index !== undefined ? String(index + 1) : '');
   const level = entry.level.toUpperCase().padEnd(5);
   const source = `[${entry.source}]`.padEnd(12);
   const recordingId = entry.recordingId ? ` [${entry.recordingId.slice(0, 8)}]` : '';
-  const metaStr = entry.meta ? ` ${JSON.stringify(entry.meta)}` : '';
-  
+
+  let metaStr = '';
+  if (entry.meta !== undefined) {
+    metaStr = ` ${safeStringify(entry.meta)}`;
+  }
+
   return `${phase} [${level}] ${source} ${entry.message}${recordingId}${metaStr}`;
 }
-

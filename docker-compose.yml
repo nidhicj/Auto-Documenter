@@ -106,6 +106,9 @@ services:
     container_name: autodoc-ai-service
     environment:
       GOOGLE_GEMINI_API_KEY: ${GOOGLE_GEMINI_API_KEY}
+      # To enable Anthropic Claude (Haiku 4.5) set DEFAULT_AI_PROVIDER=claude and provide CLAUDE_API_KEY
+      DEFAULT_AI_PROVIDER: ${DEFAULT_AI_PROVIDER:-gemini}
+      CLAUDE_API_KEY: ${CLAUDE_API_KEY:-}
       # GOOGLE_VISION_API_KEY is optional - only needed for redaction feature
       # If not set, OCR will use Tesseract (free, open-source)
       GOOGLE_VISION_API_KEY: ${GOOGLE_VISION_API_KEY:-}
@@ -137,6 +140,8 @@ services:
       S3_SECRET_KEY: ${S3_SECRET_KEY}
       S3_BUCKET: ${S3_BUCKET}
       GOOGLE_GEMINI_API_KEY: ${GOOGLE_GEMINI_API_KEY}
+      DEFAULT_AI_PROVIDER: ${DEFAULT_AI_PROVIDER:-gemini}
+      CLAUDE_API_KEY: ${CLAUDE_API_KEY:-}
       AI_SERVICE_URL: ${AI_SERVICE_URL}
     volumes:
       - ./backend:/app

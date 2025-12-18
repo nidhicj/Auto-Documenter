@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Cloth (Verlet + Constraints + Tear)</title>
+  <title>Cloth (Stable Verlet + Constraints + Tear)</title>
   <style>
     html, body { margin:0; height:100%; background:#0b0f14; overflow:hidden; }
     canvas { display:block; width:100vw; height:100vh; }
@@ -27,10 +27,10 @@
 <body>
 <canvas id="c"></canvas>
 <div class="hud">
-  <div><b>Cloth Simulation</b> (Verlet + constraints)</div>
+  <div><b>Cloth Simulation</b> (stable Verlet)</div>
   <div class="row">Drag = pull cloth <span class="pill">LMB / touch</span></div>
-  <div class="row">Tear while dragging = move fast / yank hard</div>
-  <div class="row">Reset <span class="pill">R</span> · Toggle wind <span class="pill">W</span></div>
+  <div class="row">Tear = yank fast while dragging</div>
+  <div class="row">Reset <span class="pill">R</span> · Wind <span class="pill">W</span></div>
 </div>
 
 <script>
@@ -49,34 +49,25 @@
     canvas.style.width = W + "px";
     canvas.style.height = H + "px";
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    buildCloth(); // rebuild to fit viewport
   }
   window.addEventListener("resize", resize, { passive: true });
-  resize();
 
   // ===== Physics parameters (tuned for stability) =====
   const GRAVITY = 980;                 // px/s^2
-  const SUBSTEPS = 6;                  // more = stiffer & stable, costs CPU
-  const ITERATIONS = 10;               // constraint solve iterations per frame
-  const DAMPING = 0.015;               // velocity damping in Verlet (0..1)
-  const MAX_DT = 1/30;                 // clamp dt to avoid exploding after tab switch
-  const MOUSE_INFLUENCE = 22;          // grab radius
-  const TEAR_STRETCH = 2.2;            // break if length > TEAR_STRETCH * rest
-  const EDGE_PADDING = 10;             // keep particles in bounds
-  const PIN_MARGIN_TOP = 80;           // cloth hang height
-
-  // Cloth size: adapt to screen
-  function computeClothDims() {
-    const spacing = Math.max(10, Math.min(18, Math.floor(Math.min(W, H) / 45)));
-    const cols = Math.floor((Math.min(W * 0.78, 900)) / spacing);
-    const rows = Math.floor((Math.min(H * 0.55, 520)) / spacing);
-    return { spacing, cols: Math.max(20, cols), rows: Math.max(16, rows) };
-  }
+  const SUBSTEPS = 6;                  // stability
+  const ITERATIONS = 10;               // constraint solve iterations
+  const DAMPING = 0.015;               // verlet damping
+  const MAX_DT = 1/30;                 // clamp dt (tab switching)
+  const MOUSE_INFLUENCE = 24;
+  const TEAR_STRETCH = 2.4;            // break if stretched too far
+  const EDGE_PADDING = 10;
 
   // ===== Core types =====
   class Particle {
     constructor(x, y, pinned=false) {
       this.x = x; this.y = y;
-      this.px = x; this.py = y;  // previous position for Verlet
+      this.px = x; this.py = y;
       this.ax = 0; this.ay = 0;
       this.pinned = pinned;
       this.pinX = x; this.pinY = y;
@@ -90,7 +81,6 @@
         this.ax = 0; this.ay = 0;
         return;
       }
-      // Verlet with damping (stable, simple)
       const vx = (this.x - this.px) * (1 - DAMPING);
       const vy = (this.y - this.py) * (1 - DAMPING);
 
@@ -105,11 +95,8 @@
       if (this.pinned) return;
       const minX = EDGE_PADDING, maxX = W - EDGE_PADDING;
       const minY = EDGE_PADDING, maxY = H - EDGE_PADDING;
-
-      // If we clamp, also adjust previous position slightly to avoid energy injection
       if (this.x < minX) { this.x = minX; this.px = this.x; }
       else if (this.x > maxX) { this.x = maxX; this.px = this.x; }
-
       if (this.y < minY) { this.y = minY; this.py = this.y; }
       else if (this.y > maxY) { this.y = maxY; this.py = this.y; }
     }
@@ -123,42 +110,61 @@
     }
     solve() {
       if (this.broken) return;
+
       const p1 = this.p1, p2 = this.p2;
       const dx = p2.x - p1.x;
       const dy = p2.y - p1.y;
       const dist = Math.hypot(dx, dy) || 1e-9;
 
-      // tear check (only if stretched far beyond rest)
+      // tear check
       if (dist > this.rest * TEAR_STRETCH) {
         this.broken = true;
         return;
       }
 
-      // positional correction
+      // IMPORTANT: correct direction (pull toward rest length)
+      // If dist > rest, move them closer; if dist < rest, move them apart.
       const diff = (dist - this.rest) / dist;
+
       const inv1 = p1.pinned ? 0 : 1 / p1.mass;
       const inv2 = p2.pinned ? 0 : 1 / p2.mass;
       const invSum = inv1 + inv2;
       if (invSum === 0) return;
 
-      // small compliance-like softness for stability
-      const stiffness = 1.0;
+      const stiffness = 1.0; // keep 1.0 with substeps+iterations for stability
       const corrX = dx * diff * stiffness;
       const corrY = dy * diff * stiffness;
 
-      p1.x += corrX * (inv1 / invSum) * 0.5 * -1;
-      p1.y += corrY * (inv1 / invSum) * 0.5 * -1;
-      p2.x += corrX * (inv2 / invSum) * 0.5 *  1;
-      p2.y += corrY * (inv2 / invSum) * 0.5 *  1;
+      // Move p1 toward p2 (+), and p2 toward p1 (-)
+      p1.x += corrX * (inv1 / invSum);
+      p1.y += corrY * (inv1 / invSum);
+      p2.x -= corrX * (inv2 / invSum);
+      p2.y -= corrY * (inv2 / invSum);
     }
   }
 
-  // ===== Cloth builder =====
+  // ===== Cloth build =====
   let particles = [];
   let constraints = [];
   let cloth = { cols: 0, rows: 0, spacing: 0, originX: 0, originY: 0 };
 
+  function computeClothDims() {
+    // Choose spacing so the cloth is clearly visible and fits on screen.
+    const spacing = Math.max(10, Math.min(18, Math.floor(Math.min(W, H) / 42)));
+
+    // Target cloth bounds (leave margins so it doesn't start off-screen)
+    const maxClothW = Math.min(W * 0.82, 980);
+    const maxClothH = Math.min(H * 0.65, 620);
+
+    const cols = Math.max(18, Math.floor(maxClothW / spacing));
+    const rows = Math.max(14, Math.floor(maxClothH / spacing));
+
+    return { spacing, cols, rows };
+  }
+
   function buildCloth() {
+    if (W === 0 || H === 0) return;
+
     particles.length = 0;
     constraints.length = 0;
 
@@ -171,68 +177,44 @@
     const height = rows * spacing;
 
     cloth.originX = Math.floor((W - width) * 0.5);
-    cloth.originY = Math.floor(Math.min(PIN_MARGIN_TOP, H * 0.18));
+    cloth.originY = Math.floor(Math.max(50, Math.min(110, H * 0.12)));
 
-    // Create grid
     const index = (x, y) => y * (cols + 1) + x;
+
+    // particles
     for (let y = 0; y <= rows; y++) {
       for (let x = 0; x <= cols; x++) {
         const px = cloth.originX + x * spacing;
         const py = cloth.originY + y * spacing;
 
-        // pin the top row at intervals
+        // pin top row at intervals
         const pin = (y === 0) && (x % 3 === 0);
         particles.push(new Particle(px, py, pin));
       }
     }
 
-    // Constraints: structural (horizontal & vertical) + a few shear (diagonal) for realism
+    // constraints: structural + shear
+    const diag = Math.hypot(spacing, spacing);
     for (let y = 0; y <= rows; y++) {
       for (let x = 0; x <= cols; x++) {
         const p = particles[index(x, y)];
-        if (x < cols) {
-          const pR = particles[index(x + 1, y)];
-          constraints.push(new Constraint(p, pR, spacing));
-        }
-        if (y < rows) {
-          const pD = particles[index(x, y + 1)];
-          constraints.push(new Constraint(p, pD, spacing));
-        }
-        // shear (diagonals)
-        if (x < cols && y < rows) {
-          const pDR = particles[index(x + 1, y + 1)];
-          constraints.push(new Constraint(p, pDR, Math.hypot(spacing, spacing)));
-        }
-        if (x > 0 && y < rows) {
-          const pDL = particles[index(x - 1, y + 1)];
-          constraints.push(new Constraint(p, pDL, Math.hypot(spacing, spacing)));
-        }
+        if (x < cols) constraints.push(new Constraint(p, particles[index(x + 1, y)], spacing));
+        if (y < rows) constraints.push(new Constraint(p, particles[index(x, y + 1)], spacing));
+
+        if (x < cols && y < rows) constraints.push(new Constraint(p, particles[index(x + 1, y + 1)], diag));
+        if (x > 0 && y < rows) constraints.push(new Constraint(p, particles[index(x - 1, y + 1)], diag));
       }
     }
   }
 
-  buildCloth();
+  // ===== Pointer interaction =====
+  const pointer = { x:0, y:0, px:0, py:0, down:false, grabbed:null, tearing:false };
 
-  // ===== Mouse / touch interaction =====
-  const pointer = {
-    x: 0, y: 0,
-    px: 0, py: 0,
-    down: false,
-    grabbed: null,
-    justDown: false,
-    tearing: false
-  };
-
-  function setPointerPos(clientX, clientY) {
-    pointer.px = pointer.x; pointer.py = pointer.y;
-    pointer.x = clientX;
-    pointer.y = clientY;
-  }
+  function setPointerPos(x, y) { pointer.px = pointer.x; pointer.py = pointer.y; pointer.x = x; pointer.y = y; }
 
   function nearestParticle(x, y, radius) {
     const r2 = radius * radius;
-    let best = null;
-    let bestD2 = r2;
+    let best = null, bestD2 = r2;
     for (const p of particles) {
       const dx = p.x - x, dy = p.y - y;
       const d2 = dx*dx + dy*dy;
@@ -243,98 +225,69 @@
 
   function onDown(x, y) {
     pointer.down = true;
-    pointer.justDown = true;
     setPointerPos(x, y);
     pointer.grabbed = nearestParticle(x, y, MOUSE_INFLUENCE);
-    // If you grab a pinned point, allow dragging anyway (it’ll unpin temporarily)
     if (pointer.grabbed) {
       pointer.grabbed._wasPinned = pointer.grabbed.pinned;
       pointer.grabbed.pinned = false;
     }
   }
-
-  function onMove(x, y) {
-    setPointerPos(x, y);
-  }
-
+  function onMove(x, y) { setPointerPos(x, y); }
   function onUp() {
     pointer.down = false;
-    pointer.justDown = false;
     pointer.tearing = false;
-    if (pointer.grabbed) {
-      // restore pin if it was pinned
-      if (pointer.grabbed._wasPinned) {
-        pointer.grabbed.pinned = true;
-        pointer.grabbed.pinX = pointer.grabbed.x;
-        pointer.grabbed.pinY = pointer.grabbed.y;
-      }
-      pointer.grabbed._wasPinned = false;
+    if (pointer.grabbed && pointer.grabbed._wasPinned) {
+      pointer.grabbed.pinned = true;
+      pointer.grabbed.pinX = pointer.grabbed.x;
+      pointer.grabbed.pinY = pointer.grabbed.y;
     }
+    if (pointer.grabbed) pointer.grabbed._wasPinned = false;
     pointer.grabbed = null;
   }
 
-  // Mouse
   window.addEventListener("mousedown", (e) => onDown(e.clientX, e.clientY));
   window.addEventListener("mousemove", (e) => onMove(e.clientX, e.clientY));
   window.addEventListener("mouseup", onUp);
   window.addEventListener("mouseleave", onUp);
 
-  // Touch (prevent scroll)
-  window.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    const t = e.changedTouches[0];
-    onDown(t.clientX, t.clientY);
-  }, { passive:false });
-  window.addEventListener("touchmove", (e) => {
-    e.preventDefault();
-    const t = e.changedTouches[0];
-    onMove(t.clientX, t.clientY);
-  }, { passive:false });
-  window.addEventListener("touchend", (e) => {
-    e.preventDefault();
-    onUp();
-  }, { passive:false });
+  window.addEventListener("touchstart", (e) => { e.preventDefault(); const t=e.changedTouches[0]; onDown(t.clientX,t.clientY); }, { passive:false });
+  window.addEventListener("touchmove", (e) => { e.preventDefault(); const t=e.changedTouches[0]; onMove(t.clientX,t.clientY); }, { passive:false });
+  window.addEventListener("touchend", (e) => { e.preventDefault(); onUp(); }, { passive:false });
   window.addEventListener("touchcancel", onUp, { passive:true });
 
-  // Keyboard
+  // keyboard
   let windOn = true;
   window.addEventListener("keydown", (e) => {
     if (e.key === "r" || e.key === "R") buildCloth();
     if (e.key === "w" || e.key === "W") windOn = !windOn;
   });
 
-  // ===== Wind field (gentle, bounded) =====
+  // ===== Wind field =====
   function windForce(t, x, y) {
     if (!windOn) return { fx: 0, fy: 0 };
-    // smooth pseudo-wind: changes over time and across space
-    const s = 0.0018;
+    const s = 0.002;
     const a = Math.sin(t*0.7 + x*s) + 0.5*Math.sin(t*1.3 + y*s*1.7);
     const b = Math.cos(t*0.9 + y*s*1.2);
-    const fx = 30 * a;
-    const fy = 10 * b;
-    return { fx, fy };
+    return { fx: 28 * a, fy: 10 * b };
   }
 
-  // ===== Tear mechanic while dragging =====
+  // Tear near pointer when yanked
   function tryTearNearPointer(strength) {
-    // strength derived from pointer speed; if strong enough, break nearby constraints
-    // break only a few per frame to keep it sane
-    const tearRadius = 28;
+    const tearRadius = 30;
     const tearR2 = tearRadius * tearRadius;
     let breaks = 0;
+
     for (const c of constraints) {
       if (c.broken) continue;
       const mx = (c.p1.x + c.p2.x) * 0.5;
       const my = (c.p1.y + c.p2.y) * 0.5;
       const dx = mx - pointer.x;
       const dy = my - pointer.y;
-      const d2 = dx*dx + dy*dy;
-      if (d2 < tearR2) {
-        // probabilistic-ish: stronger yank = more breaks
-        if (strength > 1200 || Math.random() < Math.min(0.7, (strength - 700) / 900)) {
+      if (dx*dx + dy*dy < tearR2) {
+        if (strength > 1200 || Math.random() < Math.min(0.8, (strength - 700) / 900)) {
           c.broken = true;
           breaks++;
-          if (breaks >= 5) break;
+          if (breaks >= 6) break;
         }
       }
     }
@@ -342,7 +295,8 @@
 
   // ===== Main loop =====
   let last = performance.now() / 1000;
-  function frame() {
+
+  function step() {
     const now = performance.now() / 1000;
     let dt = now - last;
     last = now;
@@ -353,27 +307,24 @@
     for (let s = 0; s < SUBSTEPS; s++) {
       const t = now + s * subDt;
 
-      // Apply forces
+      // forces
       for (const p of particles) {
         p.addForce(0, GRAVITY * p.mass);
-
         const w = windForce(t, p.x, p.y);
         p.addForce(w.fx, w.fy);
-
-        // simple air resistance via damping already in integrator
       }
 
-      // Pointer interaction
+      // pointer drag
       if (pointer.down && pointer.grabbed) {
-        // Pull grabbed particle toward pointer (soft constraint, avoids insta-teleport jitter)
         const g = pointer.grabbed;
         const dx = pointer.x - g.x;
         const dy = pointer.y - g.y;
-        // Strong but stable: move partway per substep
+
+        // soft-follow (stable)
         g.x += dx * 0.35;
         g.y += dy * 0.35;
 
-        // Tear if yanked fast
+        // tear on fast yank
         const vx = (pointer.x - pointer.px) / Math.max(1e-6, subDt);
         const vy = (pointer.y - pointer.py) / Math.max(1e-6, subDt);
         const speed = Math.hypot(vx, vy);
@@ -386,10 +337,10 @@
         }
       }
 
-      // Integrate
+      // integrate
       for (const p of particles) p.integrate(subDt);
 
-      // Solve constraints multiple iterations (stability!)
+      // constraints
       for (let k = 0; k < ITERATIONS; k++) {
         for (const c of constraints) c.solve();
         for (const p of particles) p.constrainToBounds();
@@ -397,35 +348,32 @@
     }
 
     render();
-    requestAnimationFrame(frame);
+    requestAnimationFrame(step);
   }
 
   // ===== Rendering =====
   function render() {
-    // background
     ctx.fillStyle = "#0b0f14";
     ctx.fillRect(0, 0, W, H);
 
-    // draw constraints as threads
-    ctx.lineWidth = 1;
-    ctx.globalAlpha = 1;
-
-    // subtle gradient-ish by y (fake)
+    // threads
+    ctx.lineWidth = 1.25;
     for (const c of constraints) {
       if (c.broken) continue;
       const p1 = c.p1, p2 = c.p2;
-      const dy = (p1.y + p2.y) * 0.5;
-      const shade = Math.max(0, Math.min(1, (dy - cloth.originY) / (cloth.rows * cloth.spacing)));
-      // no fancy styles: just compute a color value
-      const base = 190 - Math.floor(60 * shade);
-      ctx.strokeStyle = `rgb(${base},${base+10},${base+25})`;
+
+      const midY = (p1.y + p2.y) * 0.5;
+      const shade = Math.max(0, Math.min(1, (midY - cloth.originY) / (cloth.rows * cloth.spacing)));
+      const base = 210 - Math.floor(70 * shade);
+
+      ctx.strokeStyle = `rgb(${base},${base},${base+20})`;
       ctx.beginPath();
       ctx.moveTo(p1.x, p1.y);
       ctx.lineTo(p2.x, p2.y);
       ctx.stroke();
     }
 
-    // optional: highlight grabbed + tear zone
+    // pointer hint
     if (pointer.down) {
       ctx.globalAlpha = 0.25;
       ctx.fillStyle = pointer.tearing ? "#ff4d4d" : "#7cc0ff";
@@ -435,17 +383,19 @@
       ctx.globalAlpha = 1;
     }
 
-    // draw pins
-    ctx.fillStyle = "rgba(255,255,255,0.75)";
+    // pins
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
     for (const p of particles) {
       if (!p.pinned) continue;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, 2.3, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, 2.4, 0, Math.PI * 2);
       ctx.fill();
     }
   }
 
-  requestAnimationFrame(frame);
+  // init
+  resize();
+  requestAnimationFrame(step);
 })();
 </script>
 </body>

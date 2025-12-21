@@ -37,7 +37,7 @@ cp .env.example .env
 ```
 
 Required variables:
-- `DATABASE_URL` (default: postgresql://scribe:scribe_dev_password@localhost:5432/scribe_ai)
+- `DATABASE_URL` (default: postgresql://autodoc:autodoc_dev_password@localhost:5432/autodoc_ai)
 - `REDIS_URL` (default: redis://localhost:6379)
 - `JWT_SECRET` (generate a secure secret)
 - `GOOGLE_GEMINI_API_KEY` (your Google Gemini API key - get one at https://makersuite.google.com/app/apikey)
@@ -113,7 +113,7 @@ Then in Chrome:
 
 1. Open http://localhost:9001
 2. Login with `minioadmin` / `minioadmin123`
-3. Create bucket: `scribe-media`
+3. Create bucket: `autodoc-media`
 4. Set bucket policy to public read (for development)
 
 ## Step 6: Test the System

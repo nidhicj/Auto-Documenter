@@ -92,7 +92,7 @@ docker compose up -d
 ## Project Structure
 
 ```
-scribe-ai/
+autodoc-ai/
 ├── extension/          # Chrome MV3 extension
 │   ├── src/
 │   │   ├── record.ts          # Event listener

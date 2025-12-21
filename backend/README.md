@@ -3,7 +3,7 @@
 ## Base URL
 
 - Local: `http://localhost:3001/api`
-- Production: `https://api.scribe-ai.com/api`
+- Production: `https://api.autodoc-ai.com/api`
 
 ## Authentication
 

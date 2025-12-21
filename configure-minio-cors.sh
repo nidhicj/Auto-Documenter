@@ -8,7 +8,7 @@ echo "Configuring MinIO CORS..."
 # Get MinIO credentials from environment or use defaults
 MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
 MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin123}
-S3_BUCKET=${S3_BUCKET:-scribe-media}
+S3_BUCKET=${S3_BUCKET:-autodoc-bucket}
 
 # Configure mc client
 mc alias set myminio http://localhost:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}

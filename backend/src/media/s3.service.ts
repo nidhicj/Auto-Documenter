@@ -10,7 +10,7 @@ export class S3Service {
   private bucket: string;
 
   constructor() {
-    this.bucket = process.env.S3_BUCKET || 'scribe-media';
+    this.bucket = process.env.S3_BUCKET || 'autodoc-media';
     
     this.s3Client = new S3Client({
       endpoint: process.env.S3_ENDPOINT || process.env.S3_ENDPOINT,
@@ -86,7 +86,7 @@ export class S3Service {
   private bucket: string;
 
   constructor() {
-    this.bucket = process.env.S3_BUCKET || 'scribe-media';
+    this.bucket = process.env.S3_BUCKET || 'autodoc-media';
 
     const region = process.env.S3_REGION || 'us-east-1';
     const credentials = {

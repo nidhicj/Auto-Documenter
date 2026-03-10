@@ -68,3 +68,5 @@ ENV/
 */.env
 */.env*
 docker-compose.yml
+
+*.tar.gz

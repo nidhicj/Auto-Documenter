@@ -8,7 +8,7 @@ export interface ScreenshotData {
 }
 
 export interface DOMEvent {
-  type: 'click' | 'navigation' | 'dom_change' | 'input' | 'scroll';
+  type: 'click' | 'navigation' | 'dom_change' | 'input' | 'scroll'| 'capture';
   target: {
     tagName: string;
     id?: string;

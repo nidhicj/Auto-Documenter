@@ -101,14 +101,14 @@ export async function startRecording(): Promise<void> {
 
     // If message fails, try injecting script as fallback (only on non-restricted pages)
     await logInfo('Record', 'Message to content script failed, falling back to script injection', { tabId: tab.id, error: error instanceof Error ? error.message : String(error) }, 'R4_INJECT', recordingId);
-    console.log('[Record] Injecting script to dispatch scribe-start-recording event...');
+    console.log('[Record] Injecting script to dispatch autodoc-start-recording event...');
     try {
       await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: (recordingId) => {
-          console.log('[Injected Script] Dispatching scribe-start-recording event');
+          console.log('[Injected Script] Dispatching autodoc-start-recording event');
           // Content script will handle DOM events
-          window.dispatchEvent(new CustomEvent('scribe-start-recording', { detail: { recordingId } }));
+          window.dispatchEvent(new CustomEvent('autodoc-start-recording', { detail: { recordingId } }));
           console.log('[Injected Script] Event dispatched');
         },
         args: [recordingId],
@@ -139,26 +139,26 @@ export async function startRecording(): Promise<void> {
     timestamp: Date.now(),
   };
 
-  console.log('[Record] Capturing initial screenshot...');
-  try {
-    const screenshot = await captureScreenshot(stepIndex, initialEvent, true);
-    if (screenshot) {
-      console.log('[Record] Initial screenshot captured:', {
-        stepIndex: screenshot.stepIndex,
-        timestamp: screenshot.timestamp,
-      });
-      currentWorkflow.screenshots.push(screenshot);
-      queueScreenshot(screenshot);
-    } else {
-      console.warn('[Record] Initial screenshot capture returned null');
-    }
-  } catch (error) {
-    console.error('[Record] Failed to capture initial screenshot:', error);
-    // Continue even if screenshot fails
-  }
+  // console.log('[Record] Capturing initial screenshot...');
+  // try {
+  //   const screenshot = await captureScreenshot(stepIndex, initialEvent, true);
+  //   if (screenshot) {
+  //     console.log('[Record] Initial screenshot captured:', {
+  //       stepIndex: screenshot.stepIndex,
+  //       timestamp: screenshot.timestamp,
+  //     });
+  //     currentWorkflow.screenshots.push(screenshot);
+  //     queueScreenshot(screenshot);
+  //   } else {
+  //     console.warn('[Record] Initial screenshot capture returned null');
+  //   }
+  // } catch (error) {
+  //   console.error('[Record] Failed to capture initial screenshot:', error);
+  //   // Continue even if screenshot fails
+  // }
 
   currentWorkflow.events.push(initialEvent);
-  stepIndex++;
+  // stepIndex++;
 
   await logInfo('Record', 'Recording started successfully', {
     workflowId: currentWorkflow.id,
@@ -226,20 +226,60 @@ export async function recordEvent(event: DOMEvent): Promise<void> {
   currentWorkflow.events.push(event);
 
   // Capture screenshot for key events
-  const shouldCapture = ['click', 'navigation', 'dom_change'].includes(event.type);
-  if (shouldCapture) {
-    const screenshot = await captureScreenshot(stepIndex, event);
-    if (screenshot) {
-      currentWorkflow.screenshots.push(screenshot);
-      queueScreenshot(screenshot);
-      stepIndex++;
-    }
-  }
+  // const shouldCapture = ['click', 'navigation', 'dom_change'].includes(event.type);
+  // if (shouldCapture) {
+  //   const screenshot = await captureScreenshot(stepIndex, event);
+  //   if (screenshot) {
+  //     currentWorkflow.screenshots.push(screenshot);
+  //     queueScreenshot(screenshot);
+  //     stepIndex++;
+  //   }
+  // }
 
   // Update storage (ensure no base64 data is stored)
   const workflowToStore = sanitizeWorkflowForStorage(currentWorkflow);
   await chrome.storage.local.set({ currentWorkflow: workflowToStore });
 }
+
+export async function recordCaptureRequest(
+  reason: string,
+  meta: Record<string, any> | undefined
+): Promise<void> {
+  if (!isRecording || !currentWorkflow) return;
+
+  const url = (meta && typeof meta.url === 'string') ? meta.url : currentWorkflow.url;
+
+  const domEvent: DOMEvent = {
+    type: 'capture',
+    target: {
+      tagName: (meta && typeof meta.activeElementTag === 'string') ? meta.activeElementTag : 'BODY',
+      selector: 'body',
+    },
+    url,
+    timestamp: Date.now(),
+    metadata: {
+      reason,
+      // keep meta lightweight; do not attach huge objects
+      viewport: meta?.viewport,
+      activeElementTag: meta?.activeElementTag,
+      timestamp: meta?.timestamp,
+    },
+  };
+
+  // record the capture event as a real step
+  currentWorkflow.events.push(domEvent);
+
+  const screenshot = await captureScreenshot(stepIndex, domEvent);
+  if (screenshot) {
+    currentWorkflow.screenshots.push(screenshot);
+    queueScreenshot(screenshot);
+    stepIndex++;
+  }
+
+  const workflowToStore = sanitizeWorkflowForStorage(currentWorkflow);
+  await chrome.storage.local.set({ currentWorkflow: workflowToStore });
+}
+
 
 /**
  * Send workflow to backend for step assembly
